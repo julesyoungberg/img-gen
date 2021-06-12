@@ -210,13 +210,14 @@ class CycleGAN:
         plt.tight_layout()
         plt.show()
 
-    def train(self, train_x, train_y, test_x, test_y, epochs=40):
+    def train(self, train_x, train_y, test_x, test_y, epochs=40, checkpoints=True):
         """
         Train the networks.
         """
         tf.config.run_functions_eagerly(True)
 
-        ckpt_manager = self.initialize_checkpoint_manager()
+        if checkpoints:
+            ckpt_manager = self.initialize_checkpoint_manager()
 
         shape = (1, self.height, self.width, self.num_channels)
 
@@ -243,6 +244,6 @@ class CycleGAN:
             self.print_losses()
             self.generate_images(test_x, test_y)
 
-            if (epoch + 1) % 5 == 0:
+            if checkpoints and (epoch + 1) % 5 == 0:
                 ckpt_save_path = ckpt_manager.save()
                 print(f"saving checkpoint at {ckpt_save_path}")
