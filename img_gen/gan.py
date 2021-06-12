@@ -66,6 +66,17 @@ class GAN:
             norm_type=norm_type,
         )
 
+    def initialize_checkpoint_manager(self):
+        checkpoint_dir = "./training_checkpoints"
+        checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
+        checkpoint_manager = tf.train.Checkpoint(
+            generator_optimizer=self.generator_optimizer,
+            discriminator_optimizer=self.discriminator_optimizer,
+            generator=self.generator,
+            discriminator=self.discriminator,
+        )
+        return checkpoint_manager, checkpoint_prefix
+
     @tf.function
     def train_step(self, images, noise_dim=100, batch_size=256):
         """
@@ -104,6 +115,10 @@ class GAN:
         self.generator_losses.append(gen_loss)
         self.discriminator_losses.append(dis_loss)
 
+    def print_losses(self):
+        print("gen: ", self.generator_losses[-1].numpy(), end=", ")
+        print("dis: ", self.discriminator_losses[-1].numpy())
+
     def train(
         self,
         dataset,
@@ -111,25 +126,36 @@ class GAN:
         noise_dim=100,
         num_examples_to_generate=16,
         batch_size=256,
+        checkpoints=True,
     ):
-        checkpoint_dir = "./training_checkpoints"
-        checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
-        checkpoint = tf.train.Checkpoint(
-            generator_optimizer=self.generator_optimizer,
-            discriminator_optimizer=self.discriminator_optimizer,
-            generator=self.generator,
-            discriminator=self.discriminator,
-        )
+        tf.config.run_functions_eagerly(True)
+
+        if checkpoints:
+            ckpt_manager, ckpt_prefix = self.initialize_checkpoint_manager()
 
         seed = tf.random.normal([num_examples_to_generate, noise_dim])
 
         # A. For each epoch, do the following:
         for epoch in range(epochs):
+            print(f"epoch: {epoch} ", end="")
             start = time.time()
+
+            num_samples = len(dataset)
+            percent_done = 0
+            prev_done = 0
+
             # 1 - for each batch of the epoch,
-            for image_batch in dataset:
+            for k, image_batch in enumerate(dataset):
                 # 1.a -- run the custom train step function
                 self.train_step(image_batch)
+
+                percent_done = int(k / num_samples * 100)
+                while prev_done < percent_done:
+                    print(".", end="")
+                    prev_done += 1
+
+            print(f" time taken: {time.time() - start}s")
+            self.print_losses()
 
             # 2 - Produce images for the GIF as we go
             display.clear_output(wait=True)
@@ -137,11 +163,8 @@ class GAN:
 
             # 3 - Save the model every 5 epochs as a checkpoint,
             # which we will use later
-            if (epoch + 1) % 5 == 0:
-                checkpoint.save(file_prefix=checkpoint_prefix)
-
-            # 4 - Print out the completed epoch no. and the time spent
-            print(f"Time for epoch {epoch + 1} is {time.time() - start} sec")
+            if checkpoints and (epoch + 1) % 5 == 0:
+                ckpt_manager.save(file_prefix=ckpt_prefix)
 
         # B. Generate a final image after the training is completed
         display.clear_output(wait=True)

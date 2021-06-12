@@ -5,7 +5,7 @@ description = ""
 authors = ["Jules Youngberg <julesdayoungberg@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.7"
 tensorflow = "^2.5.0"
 tensorflow-addons = "^0.13.0"
 matplotlib = "^3.4.2"

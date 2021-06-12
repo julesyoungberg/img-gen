@@ -234,7 +234,7 @@ class CycleGAN:
             for k, (real_x, real_y) in data:
                 self.train_step(tf.reshape(real_x, shape), tf.reshape(real_y, shape))
 
-                percent_done = k / num_samples * 100
+                percent_done = int(k / num_samples * 100)
                 while prev_done < percent_done:
                     print(".", end="")
                     prev_done += 1
