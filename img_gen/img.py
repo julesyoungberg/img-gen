@@ -29,7 +29,7 @@ def random_jitter(image, width=256, height=256):
     # resize 1.12
     image = tf.image.resize(
         image,
-        [width * scale, height * scale],
+        [int(width * scale), int(height * scale)],
         method=tf.image.ResizeMethod.NEAREST_NEIGHBOR,
     )
 
