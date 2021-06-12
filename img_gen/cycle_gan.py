@@ -13,25 +13,6 @@ from img_gen.models import (
     optimizer,
 )
 
-def generate_images(model, test_input):
-    """
-    Generates an image from an input and displays them side by side.
-    """
-    prediction = model(test_input)
-
-    plt.figure(figsize=(12, 12))
-
-    display_list = [test_input[0], prediction[0]]
-    title = ["Input Image", "Predicted Image"]
-
-    for i in range(2):
-        plt.subplot(1, 2, i + 1)
-        plt.title(title[i])
-        plt.imshow(display_list[i] * 0.5 + 0.5)
-        plt.axis("off")
-
-    plt.show()
-
 
 class CycleGAN:
     """
@@ -98,7 +79,7 @@ class CycleGAN:
             fake_y = self.generator_g(real_x, training=True)
             cycled_x = self.generator_f(fake_y, training=True)
             fake_x = self.gerator_f(real_y, training=True)
-            cycled_y = generator_g(fake_x, training=True)
+            cycled_y = self.generator_g(fake_x, training=True)
 
             # same x and same y are used for identity loss.
             id_x = self.generator_f(real_x, training=True)
