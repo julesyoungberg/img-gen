@@ -14,6 +14,16 @@ from img_gen.models import (
 )
 
 
+def aggregate_losses(losses, n):
+    """
+    Aggregate the last n losses. Basic implementation takes last value.
+    """
+    last_loss = losses[-1]
+    losses = losses[: len(losses) - n]
+    losses.append(last_loss)
+    return losses
+
+
 class CycleGAN:
     """
     The Cycle GAN architecture for image-to-image translation.
@@ -24,7 +34,6 @@ class CycleGAN:
         num_channels=3,
         width=256,
         height=256,
-        conv_size=4,
         norm_type="instancenorm",
     ):
         self.num_channels = num_channels
@@ -48,7 +57,6 @@ class CycleGAN:
             channels=num_channels,
             width=width,
             height=height,
-            conv_size=conv_size,
             norm_type=norm_type,
         )
         # generator F maps from image set Y to X
@@ -56,7 +64,6 @@ class CycleGAN:
             channels=num_channels,
             width=width,
             height=height,
-            conv_size=conv_size,
             norm_type=norm_type,
         )
 
@@ -66,7 +73,6 @@ class CycleGAN:
             channels=num_channels,
             width=width,
             height=height,
-            conv_size=conv_size,
             norm_type=norm_type,
         )
         # discriminator y determines whether an image belongs to set Y
@@ -75,7 +81,6 @@ class CycleGAN:
             channels=num_channels,
             width=width,
             height=height,
-            conv_size=conv_size,
             norm_type=norm_type,
         )
 
@@ -178,6 +183,12 @@ class CycleGAN:
         self.discriminator_x_losses.append(dis_x_loss)
         self.discriminator_y_losses.append(dis_y_loss)
 
+    def aggregate_losses(self, n):
+        self.generator_g_losses = aggregate_losses(self.generator_g_losses, n)
+        self.generator_f_losses = aggregate_losses(self.generator_f_losses, n)
+        self.discriminator_x_losses = aggregate_losses(self.discriminator_x_losses, n)
+        self.discriminator_y_losses = aggregate_losses(self.discriminator_y_losses, n)
+
     def print_losses(self):
         print("gen_g: ", self.generator_g_losses[-1].numpy(), end=", ")
         print("gen_f: ", self.generator_f_losses[-1].numpy(), end=", ")
@@ -241,9 +252,23 @@ class CycleGAN:
 
             print(f" time taken: {time.time() - start}s")
 
+            self.aggregate_losses(num_samples)
             self.print_losses()
             self.generate_images(test_x, test_y)
 
             if checkpoints and (epoch + 1) % 5 == 0:
                 ckpt_save_path = ckpt_manager.save()
                 print(f"saving checkpoint at {ckpt_save_path}")
+
+    def plot_losses(self):
+        plt.plot(self.generator_g_losses, label="gen_g")
+        plt.plot(self.generator_f_losses, label="gen_f")
+        plt.plot(self.discriminator_x_losses, label="dis_x")
+        plt.plot(self.discriminator_y_losses, label="dis_y")
+
+        plt.xlabel("Epoch")
+        plt.ylabel("Loss")
+        plt.title("CycleGAN Losses")
+
+        plt.legend()
+        plt.show()
