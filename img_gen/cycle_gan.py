@@ -195,7 +195,7 @@ class CycleGAN:
 
                 self.train_step(tf.reshape(real_x, shape), tf.reshape(real_y, shape))
 
-            self.generate_images()
+            self.generate_images(test_x, test_y)
             print(f"Time taken: {time.time() - start}")
 
             if (epoch + 1) % 5 == 0:
