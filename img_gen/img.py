@@ -65,7 +65,7 @@ def preprocess_images(
     def f(image, _=None):
         return preprocess_image(image, width=width, height=height, jitter=jitter)
 
-    return images.map(f)  # .cache().shuffle(buffer_size).batch(batch_size)
+    return images.map(f).cache().shuffle(buffer_size).batch(batch_size)
 
 
 def image_similarity(image1, image2):

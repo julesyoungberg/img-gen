@@ -79,6 +79,32 @@ class CycleGAN:
             norm_type=norm_type,
         )
 
+    def setup_checkpoints(self):
+        """
+        Initialize checkpoints and restore if possible.
+        """
+        checkpoint_path = "./checkpoints/train"
+
+        ckpt = tf.train.Checkpoint(
+            generator_g=self.generator_g,
+            generator_f=self.generator_f,
+            discriminator_x=self.discriminator_x,
+            discriminator_y=self.discriminator_y,
+            generator_g_optimizer=self.generator_g_optimizer,
+            generator_f_optimizer=self.generator_f_optimizer,
+            discriminator_x_optimizer=self.discriminator_x_optimizer,
+            discriminator_y_optimizer=self.discriminator_y_optimizer,
+        )
+
+        ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_path, max_to_keep=5)
+
+        # if a checkpoint exists, restore the latest checkpoint.
+        if ckpt_manager.latest_checkpoint:
+            ckpt.restore(ckpt_manager.latest_checkpoint)
+            print("Latest checkpoint restored!")
+
+        return ckpt_manager
+
     @tf.function
     def train_step(self, real_x, real_y, lmbd=10):
         """
@@ -152,6 +178,12 @@ class CycleGAN:
         self.discriminator_x_losses.append(dis_x_loss)
         self.discriminator_y_losses.append(dis_y_loss)
 
+    def print_losses(self):
+        print("gen_g: ", self.generator_g_losses[-1].numpy(), end=", ")
+        print("gen_f: ", self.generator_f_losses[-1].numpy(), end=", ")
+        print("dis_x: ", self.discriminator_x_losses[-1].numpy(), end=", ")
+        print("dis_y: ", self.discriminator_y_losses[-1].numpy())
+
     def generate_images(self, test_x, test_y):
         """
         Generates image from the test input.
@@ -178,36 +210,12 @@ class CycleGAN:
         plt.tight_layout()
         plt.show()
 
-    def setup_checkpoints(self):
-        """
-        Initialize checkpoints and restore if possible.
-        """
-        checkpoint_path = "./checkpoints/train"
-
-        ckpt = tf.train.Checkpoint(
-            generator_g=self.generator_g,
-            generator_f=self.generator_f,
-            discriminator_x=self.discriminator_x,
-            discriminator_y=self.discriminator_y,
-            generator_g_optimizer=self.generator_g_optimizer,
-            generator_f_optimizer=self.generator_f_optimizer,
-            discriminator_x_optimizer=self.discriminator_x_optimizer,
-            discriminator_y_optimizer=self.discriminator_y_optimizer,
-        )
-
-        ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_path, max_to_keep=5)
-
-        # if a checkpoint exists, restore the latest checkpoint.
-        if ckpt_manager.latest_checkpoint:
-            ckpt.restore(ckpt_manager.latest_checkpoint)
-            print("Latest checkpoint restored!")
-
-        return ckpt_manager
-
     def train(self, train_x, train_y, test_x, test_y, epochs=40):
         """
         Train the networks.
         """
+        tf.config.run_functions_eagerly(True)
+
         ckpt_manager = self.setup_checkpoints()
 
         shape = (1, self.height, self.width, self.num_channels)
@@ -216,28 +224,23 @@ class CycleGAN:
             print(f"epoch: {epoch} ", end="")
             start = time.time()
 
-            # each batch
-            data = enumerate(tf.data.Dataset.zip((train_x, train_y)))
             num_samples = len(train_x)
             percent_done = 0
             prev_done = 0
 
+            # each batch
+            data = enumerate(tf.data.Dataset.zip((train_x, train_y)))
             for k, (real_x, real_y) in data:
+                self.train_step(tf.reshape(real_x, shape), tf.reshape(real_y, shape))
+
                 percent_done = k / num_samples * 100
                 while prev_done < percent_done:
                     print(".", end="")
                     prev_done += 1
 
-                self.train_step(tf.reshape(real_x, shape), tf.reshape(real_y, shape))
+            print(f" time taken: {time.time() - start}s")
 
-            print(f" time taken: {time.time() - start}")
-
-            if len(self.generator_f_losses) > 0:
-                print(f"gen_g: {str(self.generator_g_losses[-1])}", end=", ")
-                print(f"gen_f: {str(self.generator_f_losses[-1])}", end=", ")
-                print(f"dis_x: {str(self.discriminator_x_losses[-1])}", end=", ")
-                print(f"dis_y: {str(self.discriminator_y_losses[-1])}")
-
+            self.print_losses()
             self.generate_images(test_x, test_y)
 
             if (epoch + 1) % 5 == 0:
