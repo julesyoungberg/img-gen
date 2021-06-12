@@ -70,6 +70,12 @@ class CycleGAN:
         self.discriminator_x_optimizer = optimizer()
         self.discriminator_y_optimizer = optimizer()
 
+        # losses
+        self.generator_g_losses = []
+        self.generator_f_losses = []
+        self.discriminator_y_losses = []
+        self.discriminator_x_losses = []
+
     @tf.function
     def train_step(self, real_x, real_y, lmbd=10):
         """
@@ -136,6 +142,12 @@ class CycleGAN:
         self.discriminator_y_optimizer.apply_gradients(
             zip(dis_y_gradient, self.discriminator_y.trainable_variables)
         )
+
+        # 5. save current losses
+        self.generator_g_losses.append(gen_g_loss)
+        self.generator_f_losses.append(gen_f_loss)
+        self.discriminator_x_losses.append(dis_x_loss)
+        self.discriminator_y_losses.append(dis_y_loss)
 
     def generate_images(self, test_x, test_y):
         # sample images

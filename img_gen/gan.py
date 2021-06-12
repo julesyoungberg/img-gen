@@ -62,6 +62,9 @@ class GAN:
         self.generator_optimizer = optimizer()
         self.discriminator_optimizer = optimizer()
 
+        self.generator_losses = []
+        self.discriminator_losses = []
+
     @tf.function
     def train_step(self, images, noise_dim=100, batch_size=256):
         """
@@ -95,6 +98,10 @@ class GAN:
         self.discriminator_optimizer.apply_gradients(
             zip(dis_gradients, self.discriminator.trainable_variables)
         )
+
+        # 5. Save the current losses
+        self.generator_losses.append(gen_loss)
+        self.discriminator_losses.append(dis_loss)
 
     def train(
         self,
