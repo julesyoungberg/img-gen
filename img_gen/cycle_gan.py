@@ -79,7 +79,7 @@ class CycleGAN:
             norm_type=norm_type,
         )
 
-    def setup_checkpoints(self):
+    def initialize_checkpoint_manager(self):
         """
         Initialize checkpoints and restore if possible.
         """
@@ -216,7 +216,7 @@ class CycleGAN:
         """
         tf.config.run_functions_eagerly(True)
 
-        ckpt_manager = self.setup_checkpoints()
+        ckpt_manager = self.initialize_checkpoint_manager()
 
         shape = (1, self.height, self.width, self.num_channels)
 
