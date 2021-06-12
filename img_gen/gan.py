@@ -43,8 +43,14 @@ class GAN:
         conv_size=4,
         norm_type="instancenorm",
     ):
+        self.generator_optimizer = optimizer()
+        self.discriminator_optimizer = optimizer()
+
+        self.generator_losses = []
+        self.discriminator_losses = []
+
         self.generator = img_generator(
-            num_channels,
+            channels=num_channels,
             width=width,
             height=height,
             conv_size=conv_size,
@@ -52,18 +58,13 @@ class GAN:
         )
 
         self.discriminator = discriminator(
-            num_channels,
+            self.discriminator_optimizer,
+            chanels=num_channels,
             width=width,
             height=height,
             conv_size=conv_size,
             norm_type=norm_type,
         )
-
-        self.generator_optimizer = optimizer()
-        self.discriminator_optimizer = optimizer()
-
-        self.generator_losses = []
-        self.discriminator_losses = []
 
     @tf.function
     def train_step(self, images, noise_dim=100, batch_size=256):

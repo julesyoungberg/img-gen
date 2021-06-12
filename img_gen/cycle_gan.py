@@ -30,39 +30,6 @@ class CycleGAN:
         self.num_channels = num_channels
         self.width = width
         self.height = height
-        # generator G maps from image set X to Y
-        self.generator_g = unet_generator(
-            num_channels,
-            width=width,
-            height=height,
-            conv_size=conv_size,
-            norm_type=norm_type,
-        )
-        # generator F maps from image set Y to X
-        self.generator_f = unet_generator(
-            num_channels,
-            width=width,
-            height=height,
-            conv_size=conv_size,
-            norm_type=norm_type,
-        )
-
-        # discriminator x determines whether an image belongs to set X
-        self.discriminator_x = discriminator(
-            num_channels,
-            width=width,
-            height=height,
-            conv_size=conv_size,
-            norm_type=norm_type,
-        )
-        # discriminator y determines whether an image belongs to set Y
-        self.discriminator_y = discriminator(
-            num_channels,
-            width=width,
-            height=height,
-            conv_size=conv_size,
-            norm_type=norm_type,
-        )
 
         # optimizers
         self.generator_g_optimizer = optimizer()
@@ -75,6 +42,42 @@ class CycleGAN:
         self.generator_f_losses = []
         self.discriminator_y_losses = []
         self.discriminator_x_losses = []
+
+        # generator G maps from image set X to Y
+        self.generator_g = unet_generator(
+            channels=num_channels,
+            width=width,
+            height=height,
+            conv_size=conv_size,
+            norm_type=norm_type,
+        )
+        # generator F maps from image set Y to X
+        self.generator_f = unet_generator(
+            channels=num_channels,
+            width=width,
+            height=height,
+            conv_size=conv_size,
+            norm_type=norm_type,
+        )
+
+        # discriminator x determines whether an image belongs to set X
+        self.discriminator_x = discriminator(
+            self.discriminator_x_optimizer,
+            channels=num_channels,
+            width=width,
+            height=height,
+            conv_size=conv_size,
+            norm_type=norm_type,
+        )
+        # discriminator y determines whether an image belongs to set Y
+        self.discriminator_y = discriminator(
+            self.discriminator_y_optimizer,
+            channels=num_channels,
+            width=width,
+            height=height,
+            conv_size=conv_size,
+            norm_type=norm_type,
+        )
 
     @tf.function
     def train_step(self, real_x, real_y, lmbd=10):
@@ -150,6 +153,9 @@ class CycleGAN:
         self.discriminator_y_losses.append(dis_y_loss)
 
     def generate_images(self, test_x, test_y):
+        """
+        Generates image from the test input.
+        """
         # sample images
         x = next(iter(test_x.shuffle(1000))).numpy()
         y = next(iter(test_y.shuffle(1000))).numpy()
@@ -172,7 +178,10 @@ class CycleGAN:
         plt.tight_layout()
         plt.show()
 
-    def train(self, train_x, train_y, test_x, test_y, epochs=40):
+    def setup_checkpoints(self):
+        """
+        Initialize checkpoints and restore if possible.
+        """
         checkpoint_path = "./checkpoints/train"
 
         ckpt = tf.train.Checkpoint(
@@ -193,22 +202,43 @@ class CycleGAN:
             ckpt.restore(ckpt_manager.latest_checkpoint)
             print("Latest checkpoint restored!")
 
+        return ckpt_manager
+
+    def train(self, train_x, train_y, test_x, test_y, epochs=40):
+        """
+        Train the networks.
+        """
+        ckpt_manager = self.setup_checkpoints()
+
         shape = (1, self.height, self.width, self.num_channels)
 
         for epoch in range(epochs):
-            print(f"epoch: {epoch}")
+            print(f"epoch: {epoch} ", end="")
             start = time.time()
 
             # each batch
-            batches = enumerate(tf.data.Dataset.zip((train_x, train_y)))
-            for k, (real_x, real_y) in batches:
-                if k % 100 == 0:
-                    print(k)
+            data = enumerate(tf.data.Dataset.zip((train_x, train_y)))
+            num_samples = len(train_x)
+            percent_done = 0
+            prev_done = 0
+
+            for k, (real_x, real_y) in data:
+                percent_done = k / num_samples * 100
+                while prev_done < percent_done:
+                    print(".", end="")
+                    prev_done += 1
 
                 self.train_step(tf.reshape(real_x, shape), tf.reshape(real_y, shape))
 
+            print(f" time taken: {time.time() - start}")
+
+            if len(self.generator_f_losses) > 0:
+                print(f"gen_g: {str(self.generator_g_losses[-1])}", end=", ")
+                print(f"gen_f: {str(self.generator_f_losses[-1])}", end=", ")
+                print(f"dis_x: {str(self.discriminator_x_losses[-1])}", end=", ")
+                print(f"dis_y: {str(self.discriminator_y_losses[-1])}")
+
             self.generate_images(test_x, test_y)
-            print(f"Time taken: {time.time() - start}")
 
             if (epoch + 1) % 5 == 0:
                 ckpt_save_path = ckpt_manager.save()

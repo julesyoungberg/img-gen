@@ -190,12 +190,17 @@ def unet_generator(
 
 
 def discriminator(
-    num_channels, conv_size=(4, 4), width=256, height=256, norm_type="instancenorm"
+    optimizer,
+    channels=3,
+    conv_size=(4, 4),
+    width=256,
+    height=256,
+    norm_type="instancenorm",
 ):
     """
     Modified PatchGan discriminator model (https://arxiv.org/abs/1611.07004).
     """
-    inpt = Input(shape=(height, width, num_channels))
+    inpt = Input(shape=(height, width, channels))
 
     d = downsample(64, conv_size, leaky=True)(inpt)  # (bs, 128, 128, 64)
     d = downsample(128, conv_size, norm_type, leaky=True)(d)  # (bs, 64, 64, 128)
@@ -207,7 +212,9 @@ def discriminator(
         d
     )  # (bs, 30, 30, 1)
 
-    return Model(inpt, d)
+    model = Model(inpt, d)
+    model.compile(loss="mse", optimizer=optimizer)
+    return model
 
 
 def discriminator_loss(real, generated):
