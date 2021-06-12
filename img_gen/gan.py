@@ -140,6 +140,8 @@ class GAN:
 
         seed = tf.random.normal([num_examples_to_generate, noise_dim])
 
+        # generate_and_save_images(self.generator, 0, seed)
+
         # A. For each epoch, do the following:
         for epoch in range(epochs):
             print(f"epoch: {epoch} ", end="")

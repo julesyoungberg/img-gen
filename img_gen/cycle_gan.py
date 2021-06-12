@@ -223,6 +223,8 @@ class CycleGAN:
 
         shape = (1, self.height, self.width, self.num_channels)
 
+        # self.generate_images(test_x, test_y)
+
         for epoch in range(epochs):
             print(f"epoch: {epoch} ", end="")
             start = time.time()
@@ -231,7 +233,6 @@ class CycleGAN:
             percent_done = 0
             prev_done = 0
 
-            # each batch
             data = enumerate(tf.data.Dataset.zip((train_x, train_y)))
             for k, (real_x, real_y) in data:
                 self.train_step(tf.reshape(real_x, shape), tf.reshape(real_y, shape))

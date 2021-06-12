@@ -55,9 +55,7 @@ def preprocess_image(image, channels=3, width=256, height=256, jitter=False):
     return tf.reshape(image, (1, height, width, channels))
 
 
-def preprocess_images(
-    images, width=256, height=256, jitter=False, buffer_size=1000, batch_size=1
-):
+def preprocess_images(images, width=256, height=256, jitter=False, buffer_size=1000):
     """
     Preprocesses, shuffles, and batches a set of images.
     """
@@ -65,7 +63,7 @@ def preprocess_images(
     def f(image, _=None):
         return preprocess_image(image, width=width, height=height, jitter=jitter)
 
-    return images.map(f).cache().shuffle(buffer_size)  # .batch(batch_size)
+    return images.map(f).cache().shuffle(buffer_size)
 
 
 def image_similarity(image1, image2):
