@@ -4,6 +4,7 @@ This file defines utility functions for working with images.
 
 import tensorflow as tf
 
+
 def random_crop(image, width=256, height=256):
     """
     Fetches a random width x height crop of the input image.
@@ -41,15 +42,28 @@ def random_jitter(image, width=256, height=256):
     return image
 
 
-def preprocess_training_image(image, width=256, height=256, jitter=True):
+def preprocess_image(image, width=256, height=256, jitter=False):
     """
-    Preprocesses a training image by optionally applying a random jitter 
+    Preprocesses a training image by optionally applying a random jitter
     and normalizing the image data.
     """
     if jitter:
         image = random_jitter(image, width, height)
     image = nomralize(image)
     return image
+
+
+def preprocess_images(
+    images, width=256, height=256, jitter=False, buffer_size=1000, batch_size=1
+):
+    """
+    Preprocesses, shuffles, and batches a set of images.
+    """
+
+    def f(image, _):
+        return preprocess_image(image, width=width, height=height, jitter=jitter)
+
+    return images.map(f).cache().shuffle(buffer_size).batch(batch_size)
 
 
 def image_similarity(image1, image2):

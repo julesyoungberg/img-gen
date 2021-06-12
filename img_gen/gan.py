@@ -13,6 +13,7 @@ from img_gen.models import (
     optimizer,
 )
 
+
 def generate_and_save_images(model, epoch, test_input):
     # Notice 'training' is set to False
     # This is so all layers run in inference mode (batchnorm).
@@ -24,13 +25,14 @@ def generate_and_save_images(model, epoch, test_input):
         plt.subplot(4, 4, i + 1)
         plt.imshow(predictions[i, :, :, 0] * 127.5 + 128.5, cmap="gray")
         plt.axis("off")
-    # 3 - Save the generated images 
+    # 3 - Save the generated images
     plt.savefig("image_at_epoch_{:04d}.png".format(epoch))
     plt.show()
 
+
 class GAN:
     """
-    A basic image generator gan. 
+    A basic image generator gan.
     """
 
     def __init__(
@@ -38,12 +40,14 @@ class GAN:
         num_channels=3,
         width=256,
         height=256,
-        norm_type="instancenorm"
+        conv_size=4,
+        norm_type="instancenorm",
     ):
         self.generator = img_generator(
-            num_channels, 
-            width=width, 
+            num_channels,
+            width=width,
             height=height,
+            conv_size=conv_size,
             norm_type=norm_type,
         )
 
@@ -51,17 +55,17 @@ class GAN:
             num_channels,
             width=width,
             height=height,
+            conv_size=conv_size,
             norm_type=norm_type,
         )
 
         self.generator_optimizer = optimizer()
         self.discriminator_optimizer = optimizer()
 
-
     @tf.function
     def train_step(self, images, noise_dim=100, batch_size=256):
         """
-        Executes a single training step. 
+        Executes a single training step.
         Generates images, computes losses, computes gradients, updates models.
         """
         # 1 - Create random noise to feed it into the model
@@ -77,15 +81,11 @@ class GAN:
 
             gen_loss = generator_loss(fake_output)
             dis_loss = discriminator_loss(real_output, fake_output)
-        
+
         # 3 - Calculate gradients using loss values and model variables.
-        gen_gradients = gen_tape.gradient(
-            gen_loss, 
-            self.generator.trainable_variables
-        )
+        gen_gradients = gen_tape.gradient(gen_loss, self.generator.trainable_variables)
         dis_gradients = dis_tape.gradient(
-            dis_loss,
-            self.discriminator.trainable_variables
+            dis_loss, self.discriminator.trainable_variables
         )
 
         # 4 - Process gradients and run the optimizer
@@ -95,7 +95,6 @@ class GAN:
         self.discriminator_optimizer.apply_gradients(
             zip(dis_gradients, self.discriminator.trainable_variables)
         )
-
 
     def train(
         self,

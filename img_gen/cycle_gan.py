@@ -24,7 +24,8 @@ class CycleGAN:
         num_channels=3,
         width=256,
         height=256,
-        norm_type="instancenorm"
+        conv_size=4,
+        norm_type="instancenorm",
     ):
         self.num_channels = num_channels
         self.width = width
@@ -34,6 +35,7 @@ class CycleGAN:
             num_channels,
             width=width,
             height=height,
+            conv_size=conv_size,
             norm_type=norm_type,
         )
         # generator F maps from image set Y to X
@@ -41,6 +43,7 @@ class CycleGAN:
             num_channels,
             width=width,
             height=height,
+            conv_size=conv_size,
             norm_type=norm_type,
         )
 
@@ -49,6 +52,7 @@ class CycleGAN:
             num_channels,
             width=width,
             height=height,
+            conv_size=conv_size,
             norm_type=norm_type,
         )
         # discriminator y determines whether an image belongs to set Y
@@ -56,6 +60,7 @@ class CycleGAN:
             num_channels,
             width=width,
             height=height,
+            conv_size=conv_size,
             norm_type=norm_type,
         )
 
@@ -65,11 +70,10 @@ class CycleGAN:
         self.discriminator_x_optimizer = optimizer()
         self.discriminator_y_optimizer = optimizer()
 
-    
     @tf.function
     def train_step(self, real_x, real_y, lmbd=10):
         """
-        Executes a single training step. 
+        Executes a single training step.
         Generates images, computes losses, computes gradients, updates models.
         """
         with tf.GradientTape(persistent=True) as tape:
@@ -78,7 +82,7 @@ class CycleGAN:
             # generator F translates Y -> X
             fake_y = self.generator_g(real_x, training=True)
             cycled_x = self.generator_f(fake_y, training=True)
-            fake_x = self.gerator_f(real_y, training=True)
+            fake_x = self.generator_f(real_y, training=True)
             cycled_y = self.generator_g(fake_x, training=True)
 
             # same x and same y are used for identity loss.
@@ -110,12 +114,8 @@ class CycleGAN:
             dis_y_loss = discriminator_loss(real_y_val, fake_y_val)
 
         # 3. calculate gradients for generator and discriminator
-        gen_g_gradient = tape.gradient(
-            gen_g_loss, self.generator_g.trainable_variables
-        )
-        gen_f_gradient = tape.gradient(
-            gen_f_loss, self.generator_f.trainable_variables
-        )
+        gen_g_gradient = tape.gradient(gen_g_loss, self.generator_g.trainable_variables)
+        gen_f_gradient = tape.gradient(gen_f_loss, self.generator_f.trainable_variables)
         dis_x_gradient = tape.gradient(
             dis_x_loss, self.discriminator_x.trainable_variables
         )
@@ -136,7 +136,6 @@ class CycleGAN:
         self.discriminator_y_optimizer.apply_gradients(
             zip(dis_y_gradient, self.discriminator_y.trainable_variables)
         )
-
 
     def generate_images(self, test_x, test_y):
         # sample images
@@ -160,7 +159,6 @@ class CycleGAN:
 
         plt.tight_layout()
         plt.show()
-
 
     def train(self, train_x, train_y, test_x, test_y, epochs=40):
         checkpoint_path = "./checkpoints/train"
@@ -190,14 +188,12 @@ class CycleGAN:
             start = time.time()
 
             # each batch
-            batches = enumerate(tf.daata.Dataset.zip((train_x, train_y)))
+            batches = enumerate(tf.data.Dataset.zip((train_x, train_y)))
             for k, (real_x, real_y) in batches:
                 if k % 100 == 0:
                     print(k)
-                
-                self.train_step(
-                    tf.reshape(real_x, shape), tf.reshape(real_y, shape)
-                )
+
+                self.train_step(tf.reshape(real_x, shape), tf.reshape(real_y, shape))
 
             self.generate_images()
             print(f"Time taken: {time.time() - start}")
