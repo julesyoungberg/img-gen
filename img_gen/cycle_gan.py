@@ -6,22 +6,13 @@ import tensorflow as tf
 
 from img_gen.img import image_similarity
 from img_gen.models import (
+    aggregate_losses,
     discriminator,
     discriminator_loss,
     generator_loss,
     unet_generator,
     optimizer,
 )
-
-
-def aggregate_losses(losses, n):
-    """
-    Aggregate the last n losses. Basic implementation takes last value.
-    """
-    last_loss = losses[-1]
-    losses = losses[: len(losses) - n]
-    losses.append(last_loss)
-    return losses
 
 
 class CycleGAN:

@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 
 from img_gen.models import (
+    aggregate_losses,
     discriminator,
     discriminator_loss,
     generator_loss,
@@ -115,6 +116,10 @@ class GAN:
         self.generator_losses.append(gen_loss)
         self.discriminator_losses.append(dis_loss)
 
+    def aggregate_losses(self, n):
+        self.generator_losses = aggregate_losses(self.generator_losses, n)
+        self.discriminator_losses = aggregate_losses(self.discriminator_losses, n)
+
     def print_losses(self):
         print("gen: ", self.generator_losses[-1].numpy(), end=", ")
         print("dis: ", self.discriminator_losses[-1].numpy())
@@ -155,6 +160,8 @@ class GAN:
                     prev_done += 1
 
             print(f" time taken: {time.time() - start}s")
+
+            self.aggregate_losses()
             self.print_losses()
 
             # 2 - Produce images for the GIF as we go
@@ -169,3 +176,14 @@ class GAN:
         # B. Generate a final image after the training is completed
         display.clear_output(wait=True)
         generate_and_save_images(generator, epochs, seed)
+
+    def plot_losses(self):
+        plt.plot(self.generator_losses, label="generator")
+        plt.plot(self.discriminator_losses, label="discriminator")
+
+        plt.xlabel("Epoch")
+        plt.ylabel("Loss")
+        plt.title("GAN Losses")
+
+        plt.legend()
+        plt.show()

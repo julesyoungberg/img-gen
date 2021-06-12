@@ -244,3 +244,13 @@ def optimizer():
     Creates an optimizer.
     """
     return Adam(2e-4, beta_1=0.5)
+
+
+def aggregate_losses(losses, n):
+    """
+    Aggregate the last n losses. Basic implementation takes last value.
+    """
+    last_loss = losses[-1]
+    losses = losses[: len(losses) - n]
+    losses.append(last_loss)
+    return losses
