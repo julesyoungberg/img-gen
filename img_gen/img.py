@@ -60,7 +60,7 @@ def preprocess_images(
     Preprocesses, shuffles, and batches a set of images.
     """
 
-    def f(image, _):
+    def f(image, _=None):
         return preprocess_image(image, width=width, height=height, jitter=jitter)
 
     return images.map(f).cache().shuffle(buffer_size).batch(batch_size)
