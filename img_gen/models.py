@@ -22,7 +22,7 @@ from tensorflow_addons.layers import InstanceNormalization
 loss = BinaryCrossentropy(from_logits=True)
 
 
-def downsample(filters, size, norm_type=None):
+def downsample(filters, size=(3, 3), norm_type=None, leaky=False):
     """
     Downsamples an input.
     Applies Convolution, normalization, and leaky relu activation.
@@ -45,12 +45,15 @@ def downsample(filters, size, norm_type=None):
         elif norm_type.lower() == "instancenorm":
             model.add(InstanceNormalization(axis=-1))
 
-    model.add(LeakyReLU(0.2))
+    if leaky:
+        model.add(LeakyReLU(0.2))
+    else:
+        model.add(ReLU())
 
     return model
 
 
-def upsample(filters, size, norm_type=None, apply_dropout=False):
+def upsample(filters, size=(3, 3), norm_type=None, apply_dropout=False):
     """
     Upsamples an input.
     Applies inverse convolution, normalization, dropout, and relu normalization.
@@ -65,7 +68,7 @@ def upsample(filters, size, norm_type=None, apply_dropout=False):
             strides=2,
             padding="same",
             kernel_initializer=initializer,
-            use_bias=False,
+            # use_bias=False,
         )
     )
 
@@ -73,7 +76,7 @@ def upsample(filters, size, norm_type=None, apply_dropout=False):
         if norm_type.lower() == "batchnorm":
             model.add(BatchNormalization())
         elif norm_type.lower() == "instancenorm":
-            model.add(InstanceNormalization())
+            model.add(InstanceNormalization(axis=-1))
 
     if apply_dropout:
         model.add(Dropout(0.5))
@@ -83,7 +86,7 @@ def upsample(filters, size, norm_type=None, apply_dropout=False):
     return model
 
 
-def img_generator(output_channels, conv_size=4, width=256, height=256, norm_type=None):
+def img_generator(channels=3, conv_size=(3, 3), width=256, height=256, norm_type=None):
     """
     Basic image generator network.
     """
@@ -112,25 +115,28 @@ def img_generator(output_channels, conv_size=4, width=256, height=256, norm_type
         model = layer(model)
 
     initializer = tf.random_normal_initializer(0.0, 0.02)
-    model = Conv2DTranspose(
-        output_channels,
-        4,
+    gen = Conv2DTranspose(
+        channels,
+        conv_size,
         strides=2,
         padding="same",
         kernel_initializer=initializer,
+        activation="tanh",
     )(
-        model
+        gen
     )  # (bs, 256, 256, 3)
 
     return model
 
 
 def unet_generator(
-    output_channels, conv_size=4, width=256, height=256, norm_type="batchnorm"
+    channels=3, conv_size=(3, 3), width=256, height=256, norm_type="instancenorm"
 ):
     """
     Modified u-net generator model (https://arxiv.org/abs/1611.07004).
     """
+    gen_input = Input(shape=(height, width, channels))
+
     encoder_layers = [
         downsample(64, conv_size),  # (bs, 128, 128, 64)
         downsample(128, conv_size, norm_type),  # (bs, 64, 64, 128)
@@ -143,65 +149,65 @@ def unet_generator(
     ]
 
     decoder_layers = [
-        upsample(512, conv_size, norm_type, apply_dropout=True),  # (bs, 2, 2, 1024)
-        upsample(512, conv_size, norm_type, apply_dropout=True),  # (bs, 4, 4, 1024)
-        upsample(512, conv_size, norm_type, apply_dropout=True),  # (bs, 8, 8, 1024)
+        upsample(512, conv_size, norm_type),  # (bs, 2, 2, 1024)
+        upsample(512, conv_size, norm_type),  # (bs, 4, 4, 1024)
+        upsample(512, conv_size, norm_type),  # (bs, 8, 8, 1024)
         upsample(512, conv_size, norm_type),  # (bs, 16, 16, 1024)
         upsample(256, conv_size, norm_type),  # (bs, 32, 32, 512)
         upsample(128, conv_size, norm_type),  # (bs, 64, 64, 256)
         upsample(64, conv_size, norm_type),  # (bs, 128, 128, 128)
     ]
 
-    gen_input = Input(shape=(height, width, output_channels))
     gen = gen_input
 
     # downsampling through the model
     skips = []
-    for down in encoder_layers:
-        gen = down(gen)
+    for layer in encoder_layers:
+        gen = layer(gen)
         skips.append(gen)
 
     # reverse and remove first element
     skips = skips[::-1][1:]
 
     # upsampling and establishing the skip connections
-    concat = Concatenate()
     for skip_layer, layer in zip(skips, decoder_layers):
         gen = layer(gen)
-        gen = concat([gen, skip_layer])
+        gen = Concatenate()([gen, skip_layer])
 
     initializer = tf.random_normal_initializer(0.0, 0.02)
     gen = Conv2DTranspose(
-        output_channels,
+        channels,
         conv_size,
         strides=2,
         padding="same",
         kernel_initializer=initializer,
+        activation="tanh",
     )(
         gen
     )  # (bs, 256, 256, 3)
 
-    return Model(inputs=gen_input, outputs=gen)
+    return Model(gen_input, gen)
 
 
-def discriminator(num_channels, conv_size=4, width=256, height=256, norm_type="batchnorm"):
+def discriminator(
+    num_channels, conv_size=(4, 4), width=256, height=256, norm_type="instancenorm"
+):
     """
-    PatchGan discriminator model (https://arxiv.org/abs/1611.07004).
+    Modified PatchGan discriminator model (https://arxiv.org/abs/1611.07004).
     """
-    inp = Input(shape=(height, width, num_channels))
-    d = inp
+    inpt = Input(shape=(height, width, num_channels))
 
-    d = downsample(64, conv_size)(d)  # (bs, 128, 128, 64)
-    d = downsample(128, conv_size, norm_type)(d)  # (bs, 64, 64, 128)
-    d = downsample(256, conv_size, norm_type)(d)  # (bs, 32, 32, 256)
-    d = downsample(512, conv_size, norm_type)(d)  # (bs, 16, 16, 512)
+    d = downsample(64, conv_size, leaky=True)(inpt)  # (bs, 128, 128, 64)
+    d = downsample(128, conv_size, norm_type, leaky=True)(d)  # (bs, 64, 64, 128)
+    d = downsample(256, conv_size, norm_type, leaky=True)(d)  # (bs, 32, 32, 256)
+    d = downsample(512, conv_size, norm_type, leaky=True)(d)  # (bs, 16, 16, 512)
 
     initializer = tf.random_normal_initializer(0.0, 0.02)
     d = Conv2D(1, conv_size, strides=1, kernel_initializer=initializer,)(
         d
     )  # (bs, 30, 30, 1)
 
-    return Model(inputs=inp, outputs=d)
+    return Model(inpt, d)
 
 
 def discriminator_loss(real, generated):
@@ -213,7 +219,7 @@ def discriminator_loss(real, generated):
     """
     real_loss = loss(tf.ones_like(real), real)
     gen_loss = loss(tf.zeros_like(generated), generated)
-    return real_loss * gen_loss * 0.5
+    return (real_loss + gen_loss) * 0.5
 
 
 def generator_loss(validity):

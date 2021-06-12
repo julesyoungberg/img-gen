@@ -12,7 +12,7 @@ def random_crop(image, width=256, height=256):
     return tf.image.random_crop(image, size=[width, height, 3])
 
 
-def nomralize(image):
+def normalize(image):
     """
     Normalizes image data from [0, 255] to [-1, 1].
     """
@@ -42,15 +42,17 @@ def random_jitter(image, width=256, height=256):
     return image
 
 
-def preprocess_image(image, width=256, height=256, jitter=False):
+def preprocess_image(image, channels=3, width=256, height=256, jitter=False):
     """
     Preprocesses a training image by optionally applying a random jitter
     and normalizing the image data.
     """
     if jitter:
         image = random_jitter(image, width, height)
-    image = nomralize(image)
-    return image
+    else:
+        image = tf.image.resize(image, (height, width))
+    image = normalize(image)
+    return tf.reshape(image, (1, height, width, channels))
 
 
 def preprocess_images(
@@ -63,7 +65,7 @@ def preprocess_images(
     def f(image, _=None):
         return preprocess_image(image, width=width, height=height, jitter=jitter)
 
-    return images.map(f).cache().shuffle(buffer_size).batch(batch_size)
+    return images.map(f)  # .cache().shuffle(buffer_size).batch(batch_size)
 
 
 def image_similarity(image1, image2):
