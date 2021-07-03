@@ -224,9 +224,11 @@ def discriminator_loss(real, generated):
     real images to an array of 1s, and the predictions on generated
     images to an array of 0s.
     """
-    real_loss = loss(tf.ones_like(real), real)
-    gen_loss = loss(tf.zeros_like(generated), generated)
-    return (real_loss + gen_loss) * 0.5
+    # real_loss = loss(tf.ones_like(real), real)
+    # gen_loss = loss(tf.zeros_like(generated), generated)
+    # return (real_loss + gen_loss) * 0.5
+    # use least squares loss
+    return tf.math.square(real - 1) + tf.math.square(generated)
 
 
 def generator_loss(validity):
@@ -236,14 +238,16 @@ def generator_loss(validity):
     discriminator's predictions on generated images to
     and array of 1s.
     """
-    return loss(tf.ones_like(validity), validity)
+    # return loss(tf.ones_like(validity), validity)
+    # use least squares loss
+    return tf.math.square(validity - 1)
 
 
 def optimizer():
     """
     Creates an optimizer.
     """
-    return Adam(2e-4, beta_1=0.5)
+    return Adam(learning_rate=2e-4, beta_1=0.5)
 
 
 def aggregate_losses(losses, n):

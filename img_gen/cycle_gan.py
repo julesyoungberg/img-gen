@@ -4,7 +4,7 @@ import time
 import matplotlib.pyplot as plt
 import tensorflow as tf
 
-from img_gen.img import image_similarity
+from img_gen.img import image_diff
 from img_gen.models import (
     aggregate_losses,
     discriminator,
@@ -130,12 +130,12 @@ class CycleGAN:
             gen_g_adv_loss = generator_loss(fake_y_val)
             gen_f_adv_loss = generator_loss(fake_x_val)
 
-            x_cycle_loss = image_similarity(real_x, cycled_x)
-            y_cycle_loss = image_similarity(real_y, cycled_y)
+            x_cycle_loss = image_diff(real_x, cycled_x)
+            y_cycle_loss = image_diff(real_y, cycled_y)
             total_cycle_loss = (x_cycle_loss + y_cycle_loss) * lmbd
 
-            id_x_loss = image_similarity(real_x, id_x)
-            id_y_loss = image_similarity(real_y, id_y)
+            id_x_loss = image_diff(real_x, id_x)
+            id_y_loss = image_diff(real_y, id_y)
 
             # generator losses
             gen_g_loss = gen_g_adv_loss + total_cycle_loss + id_y_loss * 0.5 * lmbd

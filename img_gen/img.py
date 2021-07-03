@@ -66,8 +66,8 @@ def preprocess_images(images, width=256, height=256, jitter=False, buffer_size=1
     return images.map(f)  # .cache().shuffle(buffer_size)
 
 
-def image_similarity(image1, image2):
+def image_diff(image1, image2):
     """
-    Measures the similarity of two images.
+    Measures the difference of two images.
     """
     return tf.reduce_mean(tf.abs(image1 - image2))
