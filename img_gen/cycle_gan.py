@@ -162,10 +162,10 @@ class CycleGAN:
             zip(gen_f_gradient, self.generator_f.trainable_variables)
         )
         self.discriminator_x_optimizer.apply_gradients(
-            zip(dis_x_gradient, self.discriminator_x.trainable_variables)
+            zip(dis_x_gradient / 2.0, self.discriminator_x.trainable_variables)
         )
         self.discriminator_y_optimizer.apply_gradients(
-            zip(dis_y_gradient, self.discriminator_y.trainable_variables)
+            zip(dis_y_gradient / 2.0, self.discriminator_y.trainable_variables)
         )
 
         # 5. save current losses
