@@ -114,14 +114,14 @@ def residual_block(inpt, filters=256, size=(3, 3), norm_type="instancenorm"):
     initializer = tf.random_normal_initializer(0.0, 0.02)
 
     # layer 1
-    r = Conv2D(filters, size, kernel_initializer=initializer)(inpt)
+    r = Conv2D(filters, size, padding="same", kernel_initializer=initializer)(inpt)
     if norm_type == "batchnorm":
         r = BatchNormalization()(r)
     elif norm_type == "instancenorm":
         r = InstanceNormalization(axis=-1)(r)
 
     # layer 2
-    r = Conv2D(filters, size, kernel_initializer=initializer)(inpt)
+    r = Conv2D(filters, size, padding="same", kernel_initializer=initializer)(inpt)
     if norm_type == "batchnorm":
         r = BatchNormalization()(r)
     elif norm_type == "instancenorm":
@@ -151,22 +151,32 @@ def img_generator(num_channels=3, conv_size=(3, 3), norm_type=None, dropout=0.5)
 
     decoder_layers = [
         upsample(
-            512, conv_size, norm_type, apply_dropout=True, dropout=dropout
+            512,
+            size=conv_size,
+            norm_type=norm_type,
+            apply_dropout=True,
+            dropout=dropout,
         ),  # (bs, 4, 4, 1024)
         upsample(
-            512, conv_size, norm_type, apply_dropout=True, dropout=dropout
+            512,
+            size=conv_size,
+            norm_type=norm_type,
+            apply_dropout=True,
+            dropout=dropout,
         ),  # (bs, 8, 8, 1024)
-        upsample(512, conv_size, norm_type),  # (bs, 16, 16, 1024)
-        upsample(256, conv_size, norm_type),  # (bs, 32, 32, 512)
-        upsample(128, conv_size, norm_type),  # (bs, 64, 64, 256)
-        upsample(64, conv_size, norm_type),  # (bs, 128, 128, 128)
+        upsample(512, size=conv_size, norm_type=norm_type),  # (bs, 16, 16, 1024)
+        upsample(256, size=conv_size, norm_type=norm_type),  # (bs, 32, 32, 512)
+        upsample(128, size=conv_size, norm_type=norm_type),  # (bs, 64, 64, 256)
+        upsample(64, size=conv_size, norm_type=norm_type),  # (bs, 128, 128, 128)
     ]
 
     for layer in decoder_layers:
         model = layer(model)
 
     # last layer
-    gen = upsample(num_channels, conv_size, activation="tanh")(gen)  # (bs, 256, 256, 3)
+    gen = upsample(num_channels, size=conv_size, activation="tanh")(
+        gen
+    )  # (bs, 256, 256, 3)
 
     return model
 
@@ -184,30 +194,42 @@ def unet_generator(
     gen_input = Input(shape=image_shape)
 
     encoder_layers = [
-        downsample(64, conv_size),  # (bs, 128, 128, 64)
-        downsample(128, conv_size, norm_type),  # (bs, 64, 64, 128)
-        downsample(256, conv_size, norm_type),  # (bs, 32, 32, 256)
-        downsample(512, conv_size, norm_type),  # (bs, 16, 16, 512)
-        downsample(512, conv_size, norm_type),  # (bs, 8, 8, 512)
-        downsample(512, conv_size, norm_type),  # (bs, 4, 4, 512)
-        downsample(512, conv_size, norm_type),  # (bs, 2, 2, 512)
-        downsample(512, conv_size, norm_type),  # (bs, 1, 1, 512)
+        downsample(64, size=conv_size),  # (bs, 128, 128, 64)
+        downsample(128, size=conv_size, norm_type=norm_type),  # (bs, 64, 64, 128)
+        downsample(256, size=conv_size, norm_type=norm_type),  # (bs, 32, 32, 256)
+        downsample(512, size=conv_size, norm_type=norm_type),  # (bs, 16, 16, 512)
+        downsample(512, size=conv_size, norm_type=norm_type),  # (bs, 8, 8, 512)
+        downsample(512, size=conv_size, norm_type=norm_type),  # (bs, 4, 4, 512)
+        downsample(512, size=conv_size, norm_type=norm_type),  # (bs, 2, 2, 512)
+        downsample(512, size=conv_size, norm_type=norm_type),  # (bs, 1, 1, 512)
     ]
 
     decoder_layers = [
         upsample(
-            512, conv_size, norm_type, apply_dropout=apply_dropout, dropout=dropout
+            512,
+            size=conv_size,
+            norm_type=norm_type,
+            apply_dropout=apply_dropout,
+            dropout=dropout,
         ),  # (bs, 2, 2, 1024)
         upsample(
-            512, conv_size, norm_type, apply_dropout=apply_dropout, dropout=dropout
+            512,
+            size=conv_size,
+            norm_type=norm_type,
+            apply_dropout=apply_dropout,
+            dropout=dropout,
         ),  # (bs, 4, 4, 1024)
         upsample(
-            512, conv_size, norm_type, apply_dropout=apply_dropout, dropout=dropout
+            512,
+            size=conv_size,
+            norm_type=norm_type,
+            apply_dropout=apply_dropout,
+            dropout=dropout,
         ),  # (bs, 8, 8, 1024)
-        upsample(512, conv_size, norm_type),  # (bs, 16, 16, 1024)
-        upsample(256, conv_size, norm_type),  # (bs, 32, 32, 512)
-        upsample(128, conv_size, norm_type),  # (bs, 64, 64, 256)
-        upsample(64, conv_size, norm_type),  # (bs, 128, 128, 128)
+        upsample(512, size=conv_size, norm_type=norm_type),  # (bs, 16, 16, 1024)
+        upsample(256, size=conv_size, norm_type=norm_type),  # (bs, 32, 32, 512)
+        upsample(128, size=conv_size, norm_type=norm_type),  # (bs, 64, 64, 256)
+        upsample(64, size=conv_size, norm_type=norm_type),  # (bs, 128, 128, 128)
     ]
 
     gen = gen_input
@@ -228,7 +250,7 @@ def unet_generator(
         gen = concat([layer(gen), skip_layer])
 
     # last layer
-    gen = upsample(image_shape[2], conv_size, activation="tanh")(
+    gen = upsample(image_shape[2], size=conv_size, activation="tanh")(
         gen
     )  # (bs, 256, 256, 3)
 
@@ -288,14 +310,16 @@ def discriminator(
     """
     inpt = Input(shape=image_shape)
 
-    d = downsample(64, conv_size, leaky=True, alpha=alpha)(inpt)  # (bs, 128, 128, 64)
-    d = downsample(128, conv_size, norm_type, leaky=True, alpha=alpha)(
+    d = downsample(64, size=conv_size, leaky=True, alpha=alpha)(
+        inpt
+    )  # (bs, 128, 128, 64)
+    d = downsample(128, size=conv_size, norm_type=norm_type, leaky=True, alpha=alpha)(
         d
     )  # (bs, 64, 64, 128)
-    d = downsample(256, conv_size, norm_type, leaky=True, alpha=alpha)(
+    d = downsample(256, size=conv_size, norm_type=norm_type, leaky=True, alpha=alpha)(
         d
     )  # (bs, 32, 32, 256)
-    d = downsample(512, conv_size, norm_type, leaky=True, alpha=alpha)(
+    d = downsample(512, size=conv_size, norm_type=norm_type, leaky=True, alpha=alpha)(
         d
     )  # (bs, 16, 16, 512)
 
@@ -313,7 +337,7 @@ def discriminator_loss_cross_entropy(real, generated):
 
 
 def discriminator_loss_least_squares(real, generated):
-    return tf.math.square(real - 1) + tf.math.square(generated)
+    return tf.math.reduce_mean(tf.math.square(real - 1) + tf.math.square(generated))
 
 
 def discriminator_loss(real, generated, loss_type="least_squares"):
@@ -337,7 +361,7 @@ def generator_loss_cross_entropy(validity):
 
 
 def generator_loss_least_squares(validity):
-    return tf.math.square(validity - 1)
+    return tf.math.reduce_mean(tf.math.square(validity - 1))
 
 
 def generator_loss(validity, loss_type="least_squares"):

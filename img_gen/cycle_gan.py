@@ -29,7 +29,7 @@ class CycleGAN:
         norm_type="instancenorm",
         learning_rate=2e-4,
         loss_type="least_squares",
-        gen_type="unet",
+        gen_type="resnet",
     ):
         self.loss_type = loss_type
         self.num_channels = num_channels
@@ -201,6 +201,9 @@ class CycleGAN:
         self.discriminator_y_optimizer.apply_gradients(
             zip(dis_y_gradient, self.discriminator_y.trainable_variables)
         )
+
+        print("gen_g_loss:", np.array(gen_g_loss).shape)
+        print("generator_g_losses:", np.array(self.generator_g_losses).shape)
 
         # 5. save current losses
         self.generator_g_losses.append(gen_g_loss)
