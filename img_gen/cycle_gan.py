@@ -202,9 +202,6 @@ class CycleGAN:
             zip(dis_y_gradient, self.discriminator_y.trainable_variables)
         )
 
-        print("gen_g_loss:", np.array(gen_g_loss).shape)
-        print("generator_g_losses:", np.array(self.generator_g_losses).shape)
-
         # 5. save current losses
         self.generator_g_losses.append(gen_g_loss)
         self.generator_f_losses.append(gen_f_loss)
