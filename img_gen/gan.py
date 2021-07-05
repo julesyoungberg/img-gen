@@ -51,18 +51,14 @@ class GAN:
         self.discriminator_losses = []
 
         self.generator = img_generator(
-            channels=num_channels,
-            width=width,
-            height=height,
+            num_channels=num_channels,
             conv_size=conv_size,
             norm_type=norm_type,
         )
 
         self.discriminator = discriminator(
             self.discriminator_optimizer,
-            chanels=num_channels,
-            width=width,
-            height=height,
+            image_shape=(height, width, num_channels),
             conv_size=conv_size,
             norm_type=norm_type,
         )
@@ -130,7 +126,6 @@ class GAN:
         epochs=60,
         noise_dim=100,
         num_examples_to_generate=16,
-        batch_size=256,
         checkpoints=True,
     ):
         tf.config.run_functions_eagerly(True)
@@ -177,7 +172,7 @@ class GAN:
 
         # B. Generate a final image after the training is completed
         display.clear_output(wait=True)
-        generate_and_save_images(generator, epochs, seed)
+        generate_and_save_images(self.generator, epochs, seed)
 
     def plot_losses(self):
         plt.plot(self.generator_losses, label="generator")

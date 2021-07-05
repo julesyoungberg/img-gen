@@ -1,7 +1,7 @@
-import os
 import time
 
 import matplotlib.pyplot as plt
+import numpy as np
 import tensorflow as tf
 
 from img_gen.img import image_diff
@@ -10,6 +10,7 @@ from img_gen.models import (
     discriminator,
     discriminator_loss,
     generator_loss,
+    resnet_generator,
     unet_generator,
     optimizer,
 )
@@ -26,16 +27,22 @@ class CycleGAN:
         width=256,
         height=256,
         norm_type="instancenorm",
+        learning_rate=2e-4,
+        loss_type="least_squares",
+        gen_type="unet",
     ):
+        self.loss_type = loss_type
         self.num_channels = num_channels
         self.width = width
         self.height = height
 
+        image_shape = (height, width, num_channels)
+
         # optimizers
-        self.generator_g_optimizer = optimizer()
-        self.generator_f_optimizer = optimizer()
-        self.discriminator_x_optimizer = optimizer()
-        self.discriminator_y_optimizer = optimizer()
+        self.generator_g_optimizer = optimizer(learning_rate=learning_rate)
+        self.generator_f_optimizer = optimizer(learning_rate=learning_rate)
+        self.discriminator_x_optimizer = optimizer(learning_rate=learning_rate)
+        self.discriminator_y_optimizer = optimizer(learning_rate=learning_rate)
 
         # losses
         self.generator_g_losses = []
@@ -43,36 +50,48 @@ class CycleGAN:
         self.discriminator_y_losses = []
         self.discriminator_x_losses = []
 
-        # generator G maps from image set X to Y
-        self.generator_g = unet_generator(
-            channels=num_channels,
-            width=width,
-            height=height,
-            norm_type=norm_type,
-        )
-        # generator F maps from image set Y to X
-        self.generator_f = unet_generator(
-            channels=num_channels,
-            width=width,
-            height=height,
-            norm_type=norm_type,
-        )
+        if gen_type == "resnet":
+            # generator G maps from image set X to Y
+            self.generator_g = resnet_generator(
+                image_shape=image_shape,
+                norm_type=norm_type,
+            )
+            # generator F maps from image set Y to X
+            self.generator_f = resnet_generator(
+                image_shape=image_shape,
+                norm_type=norm_type,
+            )
+        elif gen_type == "unet":
+            # generator G maps from image set X to Y
+            self.generator_g = unet_generator(
+                image_shape=image_shape,
+                norm_type=norm_type,
+                apply_dropout=True,
+                dropout=0.5,
+            )
+            # generator F maps from image set Y to X
+            self.generator_f = unet_generator(
+                image_shape=image_shape,
+                norm_type=norm_type,
+                apply_dropout=True,
+                dropout=0.5,
+            )
 
         # discriminator x determines whether an image belongs to set X
         self.discriminator_x = discriminator(
             self.discriminator_x_optimizer,
-            channels=num_channels,
-            width=width,
-            height=height,
+            image_shape=image_shape,
             norm_type=norm_type,
+            loss_weight=0.5,
+            alpha=0.2,
         )
         # discriminator y determines whether an image belongs to set Y
         self.discriminator_y = discriminator(
             self.discriminator_y_optimizer,
-            channels=num_channels,
-            width=width,
-            height=height,
+            image_shape=image_shape,
             norm_type=norm_type,
+            loss_weight=0.5,
+            alpha=0.2,
         )
 
     def initialize_checkpoint_manager(self):
@@ -102,47 +121,62 @@ class CycleGAN:
         return ckpt_manager
 
     @tf.function
+    def calculate_losses(self, real_x, real_y, lmbd=10, use_identity=True):
+        # 1. get the predictions
+        # generator G translates X -> Y
+        # generator F translates Y -> X
+        fake_y = self.generator_g(real_x, training=True)
+        cycled_x = self.generator_f(fake_y, training=True)
+        fake_x = self.generator_f(real_y, training=True)
+        cycled_y = self.generator_g(fake_x, training=True)
+
+        # same x and same y are used for identity loss.
+        id_x = self.generator_f(real_x, training=True)
+        id_y = self.generator_g(real_y, training=True)
+
+        # discriminate the real and generated results
+        real_x_val = self.discriminator_x(real_x, training=True)
+        real_y_val = self.discriminator_y(real_y, training=True)
+        fake_x_val = self.discriminator_x(fake_x, training=True)
+        fake_y_val = self.discriminator_y(fake_y, training=True)
+
+        # 2. Calculate loss
+        gen_g_adv_loss = generator_loss(fake_y_val, loss_type=self.loss_type)
+        gen_f_adv_loss = generator_loss(fake_x_val, loss_type=self.loss_type)
+
+        x_cycle_loss = image_diff(real_x, cycled_x)
+        y_cycle_loss = image_diff(real_y, cycled_y)
+        total_cycle_loss = (x_cycle_loss + y_cycle_loss) * lmbd
+
+        # generator losses
+        gen_g_loss = gen_g_adv_loss + total_cycle_loss
+        gen_f_loss = gen_f_adv_loss + total_cycle_loss
+
+        # optionally add identity loss
+        if use_identity:
+            gen_g_loss += image_diff(real_x, id_x) * 0.5 * lmbd
+            gen_f_loss += image_diff(real_y, id_y) * 0.5 * lmbd
+
+        # discriminator losses
+        dis_x_loss = discriminator_loss(
+            real_x_val, fake_x_val, loss_type=self.loss_type
+        )
+        dis_y_loss = discriminator_loss(
+            real_y_val, fake_y_val, loss_type=self.loss_type
+        )
+
+        return gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss
+
+    @tf.function
     def train_step(self, real_x, real_y, lmbd=10):
         """
         Executes a single training step.
         Generates images, computes losses, computes gradients, updates models.
         """
         with tf.GradientTape(persistent=True) as tape:
-            # 1. get the predictions
-            # generator G translates X -> Y
-            # generator F translates Y -> X
-            fake_y = self.generator_g(real_x, training=True)
-            cycled_x = self.generator_f(fake_y, training=True)
-            fake_x = self.generator_f(real_y, training=True)
-            cycled_y = self.generator_g(fake_x, training=True)
-
-            # same x and same y are used for identity loss.
-            id_x = self.generator_f(real_x, training=True)
-            id_y = self.generator_g(real_y, training=True)
-
-            # discriminate the real and generated results
-            real_x_val = self.discriminator_x(real_x, training=True)
-            real_y_val = self.discriminator_y(real_y, training=True)
-            fake_x_val = self.discriminator_x(fake_x, training=True)
-            fake_y_val = self.discriminator_y(fake_y, training=True)
-
-            # 2. Calculate loss
-            gen_g_adv_loss = generator_loss(fake_y_val)
-            gen_f_adv_loss = generator_loss(fake_x_val)
-
-            x_cycle_loss = image_diff(real_x, cycled_x)
-            y_cycle_loss = image_diff(real_y, cycled_y)
-            total_cycle_loss = (x_cycle_loss + y_cycle_loss) * lmbd
-
-            id_x_loss = image_diff(real_x, id_x)
-            id_y_loss = image_diff(real_y, id_y)
-
-            # generator losses
-            gen_g_loss = gen_g_adv_loss + total_cycle_loss + id_y_loss * 0.5 * lmbd
-            gen_f_loss = gen_f_adv_loss + total_cycle_loss + id_x_loss * 0.5 * lmbd
-
-            dis_x_loss = discriminator_loss(real_x_val, fake_x_val)
-            dis_y_loss = discriminator_loss(real_y_val, fake_y_val)
+            gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss = self.calculate_losses(
+                real_x, real_y, lmbd=lmbd
+            )
 
         # 3. calculate gradients for generator and discriminator
         gen_g_gradient = tape.gradient(gen_g_loss, self.generator_g.trainable_variables)
@@ -162,10 +196,10 @@ class CycleGAN:
             zip(gen_f_gradient, self.generator_f.trainable_variables)
         )
         self.discriminator_x_optimizer.apply_gradients(
-            zip(dis_x_gradient / 2.0, self.discriminator_x.trainable_variables)
+            zip(dis_x_gradient, self.discriminator_x.trainable_variables)
         )
         self.discriminator_y_optimizer.apply_gradients(
-            zip(dis_y_gradient / 2.0, self.discriminator_y.trainable_variables)
+            zip(dis_y_gradient, self.discriminator_y.trainable_variables)
         )
 
         # 5. save current losses
@@ -186,12 +220,12 @@ class CycleGAN:
         print("dis_x: ", self.discriminator_x_losses[-1].numpy(), end=", ")
         print("dis_y: ", self.discriminator_y_losses[-1].numpy())
 
-    def generate_images(self, test_x, test_y):
+    def generate_images(self, test_X, test_y):
         """
         Generates image from the test input.
         """
         # sample images
-        x = next(iter(test_x.shuffle(1000))).numpy()
+        x = next(iter(test_X.shuffle(1000))).numpy()
         y = next(iter(test_y.shuffle(1000))).numpy()
 
         # get predictions for those images
@@ -212,7 +246,7 @@ class CycleGAN:
         plt.tight_layout()
         plt.show()
 
-    def train(self, train_x, train_y, test_x, test_y, epochs=40, checkpoints=True):
+    def train(self, train_X, train_y, test_X, test_y, epochs=40, checkpoints=True):
         """
         Train the networks.
         """
@@ -229,11 +263,11 @@ class CycleGAN:
             print(f"epoch: {epoch} ", end="")
             start = time.time()
 
-            num_samples = len(train_x)
+            num_samples = len(train_X)
             percent_done = 0
             prev_done = 0
 
-            data = enumerate(tf.data.Dataset.zip((train_x, train_y)))
+            data = enumerate(tf.data.Dataset.zip((train_X, train_y)))
             for k, (real_x, real_y) in data:
                 self.train_step(tf.reshape(real_x, shape), tf.reshape(real_y, shape))
 
@@ -246,7 +280,7 @@ class CycleGAN:
 
             self.aggregate_losses(num_samples)
             self.print_losses()
-            self.generate_images(test_x, test_y)
+            self.generate_images(test_X, test_y)
 
             if checkpoints and (epoch + 1) % 5 == 0:
                 ckpt_save_path = ckpt_manager.save()
@@ -264,3 +298,35 @@ class CycleGAN:
 
         plt.legend()
         plt.show()
+
+    def score(self, test_x, test_y, lmbd=10):
+        tf.config.run_functions_eagerly(True)
+
+        shape = (1, self.height, self.width, self.num_channels)
+
+        gen_g_losses = np.array([])
+        gen_f_losses = np.array([])
+        dis_x_losses = np.array([])
+        dis_y_losses = np.array([])
+
+        # calculae losses for each image
+        for (raw_x, raw_y) in tf.data.Dataset.zip((test_x, test_y)):
+            real_x = tf.reshape(raw_x, shape)
+            real_y = tf.reshape(raw_y, shape)
+
+            gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss = self.calculate_losses(
+                real_x, real_y, lmbd=lmbd
+            )
+
+            # save the losses
+            gen_g_losses = np.append(gen_g_losses, gen_g_loss)
+            gen_f_losses = np.append(gen_f_losses, gen_f_loss)
+            dis_x_losses = np.append(dis_x_losses, dis_x_loss)
+            dis_y_losses = np.append(dis_y_losses, dis_y_loss)
+
+        return (
+            gen_g_losses.mean(),
+            gen_f_losses.mean(),
+            dis_x_losses.mean(),
+            dis_y_losses.mean(),
+        )

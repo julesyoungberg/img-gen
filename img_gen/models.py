@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import (
+    Activation,
     BatchNormalization,
     Concatenate,
     Conv2D,
@@ -22,7 +23,15 @@ from tensorflow_addons.layers import InstanceNormalization
 loss = BinaryCrossentropy(from_logits=True)
 
 
-def downsample(filters, size=(3, 3), norm_type=None, leaky=False):
+def downsample(
+    filters,
+    size=(3, 3),
+    strides=(2, 2),
+    norm_type=None,
+    leaky=False,
+    alpha=0.2,
+    activation="relu",
+):
     """
     Downsamples an input.
     Applies Convolution, normalization, and leaky relu activation.
@@ -33,27 +42,37 @@ def downsample(filters, size=(3, 3), norm_type=None, leaky=False):
         Conv2D(
             filters,
             size,
-            strides=2,
+            strides=strides,
             padding="same",
             kernel_initializer=initializer,
         )
     )
 
-    if norm_type:
-        if norm_type.lower() == "batchnorm":
-            model.add(BatchNormalization())
-        elif norm_type.lower() == "instancenorm":
-            model.add(InstanceNormalization(axis=-1))
+    if norm_type == "batchnorm":
+        model.add(BatchNormalization())
+    elif norm_type == "instancenorm":
+        model.add(InstanceNormalization(axis=-1))
 
-    if leaky:
-        model.add(LeakyReLU(0.2))
-    else:
-        model.add(ReLU())
+    if activation == "relu":
+        if leaky:
+            model.add(LeakyReLU(alpha))
+        else:
+            model.add(ReLU())
+    elif activation == "tanh":
+        model.add(Activation("tanh"))
 
     return model
 
 
-def upsample(filters, size=(3, 3), norm_type=None, apply_dropout=False):
+def upsample(
+    filters,
+    size=(3, 3),
+    strides=2,
+    norm_type=None,
+    apply_dropout=False,
+    dropout=0.5,
+    activation="relu",
+):
     """
     Upsamples an input.
     Applies inverse convolution, normalization, dropout, and relu normalization.
@@ -65,46 +84,78 @@ def upsample(filters, size=(3, 3), norm_type=None, apply_dropout=False):
         Conv2DTranspose(
             filters,
             size,
-            strides=2,
+            strides=strides,
             padding="same",
             kernel_initializer=initializer,
             # use_bias=False,
         )
     )
 
-    if norm_type:
-        if norm_type.lower() == "batchnorm":
-            model.add(BatchNormalization())
-        elif norm_type.lower() == "instancenorm":
-            model.add(InstanceNormalization(axis=-1))
+    if norm_type == "batchnorm":
+        model.add(BatchNormalization())
+    elif norm_type == "instancenorm":
+        model.add(InstanceNormalization(axis=-1))
 
     if apply_dropout:
-        model.add(Dropout(0.5))
+        model.add(Dropout(dropout))
 
-    model.add(ReLU())
+    if activation == "relu":
+        model.add(ReLU())
+    elif activation == "tanh":
+        model.add(Activation("tanh"))
 
     return model
 
 
-def img_generator(channels=3, conv_size=(3, 3), width=256, height=256, norm_type=None):
+def residual_block(inpt, filters=256, size=(3, 3), norm_type="instancenorm"):
+    """
+    Creates a residual block for downsampling an image.
+    """
+    initializer = tf.random_normal_initializer(0.0, 0.02)
+
+    # layer 1
+    r = Conv2D(filters, size, kernel_initializer=initializer)(inpt)
+    if norm_type == "batchnorm":
+        r = BatchNormalization()(r)
+    elif norm_type == "instancenorm":
+        r = InstanceNormalization(axis=-1)(r)
+
+    # layer 2
+    r = Conv2D(filters, size, kernel_initializer=initializer)(inpt)
+    if norm_type == "batchnorm":
+        r = BatchNormalization()(r)
+    elif norm_type == "instancenorm":
+        r = InstanceNormalization(axis=-1)(r)
+
+    # add input to output to create residual block
+    # g(x) = f(x) + x
+    r = Concatenate()([r, inpt])
+
+    return r
+
+
+def img_generator(num_channels=3, conv_size=(3, 3), norm_type=None, dropout=0.5):
     """
     Basic image generator network.
     """
     model = Sequential()
     model.add(Dense(2 * 2 * 1024, use_bias=False, input_shape=(100,)))
 
-    if norm_type:
-        if norm_type.lower() == "batchnorm":
-            model.add(BatchNormalization())
-        elif norm_type.lower() == "instancenorm":
-            model.add(InstanceNormalization())
+    if norm_type == "batchnorm":
+        model.add(BatchNormalization())
+    elif norm_type == "instancenorm":
+        model.add(InstanceNormalization())
 
     model.add(LeakyReLU())
     model.add(Reshape((2, 2, 1024)))
 
     decoder_layers = [
-        upsample(512, conv_size, norm_type, apply_dropout=True),  # (bs, 4, 4, 1024)
-        upsample(512, conv_size, norm_type, apply_dropout=True),  # (bs, 8, 8, 1024)
+        upsample(
+            512, conv_size, norm_type, apply_dropout=True, dropout=dropout
+        ),  # (bs, 4, 4, 1024)
+        upsample(
+            512, conv_size, norm_type, apply_dropout=True, dropout=dropout
+        ),  # (bs, 8, 8, 1024)
         upsample(512, conv_size, norm_type),  # (bs, 16, 16, 1024)
         upsample(256, conv_size, norm_type),  # (bs, 32, 32, 512)
         upsample(128, conv_size, norm_type),  # (bs, 64, 64, 256)
@@ -114,28 +165,23 @@ def img_generator(channels=3, conv_size=(3, 3), width=256, height=256, norm_type
     for layer in decoder_layers:
         model = layer(model)
 
-    initializer = tf.random_normal_initializer(0.0, 0.02)
-    gen = Conv2DTranspose(
-        channels,
-        conv_size,
-        strides=2,
-        padding="same",
-        kernel_initializer=initializer,
-        activation="tanh",
-    )(
-        gen
-    )  # (bs, 256, 256, 3)
+    # last layer
+    gen = upsample(num_channels, conv_size, activation="tanh")(gen)  # (bs, 256, 256, 3)
 
     return model
 
 
 def unet_generator(
-    channels=3, conv_size=(3, 3), width=256, height=256, norm_type="instancenorm"
+    image_shape=(256, 256, 3),
+    conv_size=(3, 3),
+    norm_type="instancenorm",
+    apply_dropout=True,
+    dropout=0.5,
 ):
     """
     Modified u-net generator model (https://arxiv.org/abs/1611.07004).
     """
-    gen_input = Input(shape=(height, width, channels))
+    gen_input = Input(shape=image_shape)
 
     encoder_layers = [
         downsample(64, conv_size),  # (bs, 128, 128, 64)
@@ -149,9 +195,15 @@ def unet_generator(
     ]
 
     decoder_layers = [
-        upsample(512, conv_size, norm_type),  # (bs, 2, 2, 1024)
-        upsample(512, conv_size, norm_type),  # (bs, 4, 4, 1024)
-        upsample(512, conv_size, norm_type),  # (bs, 8, 8, 1024)
+        upsample(
+            512, conv_size, norm_type, apply_dropout=apply_dropout, dropout=dropout
+        ),  # (bs, 2, 2, 1024)
+        upsample(
+            512, conv_size, norm_type, apply_dropout=apply_dropout, dropout=dropout
+        ),  # (bs, 4, 4, 1024)
+        upsample(
+            512, conv_size, norm_type, apply_dropout=apply_dropout, dropout=dropout
+        ),  # (bs, 8, 8, 1024)
         upsample(512, conv_size, norm_type),  # (bs, 16, 16, 1024)
         upsample(256, conv_size, norm_type),  # (bs, 32, 32, 512)
         upsample(128, conv_size, norm_type),  # (bs, 64, 64, 256)
@@ -169,85 +221,146 @@ def unet_generator(
     # reverse and remove first element
     skips = skips[::-1][1:]
 
+    concat = Concatenate()
+
     # upsampling and establishing the skip connections
     for skip_layer, layer in zip(skips, decoder_layers):
-        gen = layer(gen)
-        gen = Concatenate()([gen, skip_layer])
+        gen = concat([layer(gen), skip_layer])
 
-    initializer = tf.random_normal_initializer(0.0, 0.02)
-    gen = Conv2DTranspose(
-        channels,
-        conv_size,
-        strides=2,
-        padding="same",
-        kernel_initializer=initializer,
-        activation="tanh",
-    )(
+    # last layer
+    gen = upsample(image_shape[2], conv_size, activation="tanh")(
         gen
     )  # (bs, 256, 256, 3)
 
     return Model(gen_input, gen)
 
 
+def resnet_generator(
+    image_shape=(256, 256, 3), num_res_blocks=9, norm_type="instancenorm"
+):
+    """
+    Modifier Res-Net (https://arxiv.org/abs/1611.07004).
+    based on: https://machinelearningmastery.com/how-to-develop-cyclegan-models-from-scratch-with-keras/
+    """
+    inpt = Input(shape=image_shape)
+
+    ## Encoder layers
+    ##
+    # c7s1-64
+    g = downsample(
+        64,
+        (7, 7),
+        strides=(1, 1),
+        norm_type=norm_type,
+    )(inpt)
+    # d128
+    g = downsample(128, (3, 3), norm_type=norm_type)(g)
+    # d256
+    g = downsample(256, (3, 3), norm_type=norm_type)(g)
+    # R256
+    for _ in range(num_res_blocks):
+        g = residual_block(g, filters=256, norm_type=norm_type)
+
+    ## Decoder layers
+    ##
+    # u128
+    g = upsample(128, (3, 3), norm_type=norm_type)(g)
+    # u64
+    g = upsample(64, (3, 3), norm_type=norm_type)(g)
+    # c7s1-3
+    g = downsample(
+        image_shape[2], (7, 7), strides=(1, 1), norm_type=norm_type, activation="tanh"
+    )(g)
+
+    return Model(inpt, g)
+
+
 def discriminator(
-    optimizer,
-    channels=3,
+    opt,
+    image_shape=(256, 256, 3),
     conv_size=(4, 4),
-    width=256,
-    height=256,
     norm_type="instancenorm",
+    loss_weight=0.5,
+    alpha=0.2,
 ):
     """
     Modified PatchGan discriminator model (https://arxiv.org/abs/1611.07004).
     """
-    inpt = Input(shape=(height, width, channels))
+    inpt = Input(shape=image_shape)
 
-    d = downsample(64, conv_size, leaky=True)(inpt)  # (bs, 128, 128, 64)
-    d = downsample(128, conv_size, norm_type, leaky=True)(d)  # (bs, 64, 64, 128)
-    d = downsample(256, conv_size, norm_type, leaky=True)(d)  # (bs, 32, 32, 256)
-    d = downsample(512, conv_size, norm_type, leaky=True)(d)  # (bs, 16, 16, 512)
-
-    initializer = tf.random_normal_initializer(0.0, 0.02)
-    d = Conv2D(1, conv_size, strides=1, kernel_initializer=initializer,)(
+    d = downsample(64, conv_size, leaky=True, alpha=alpha)(inpt)  # (bs, 128, 128, 64)
+    d = downsample(128, conv_size, norm_type, leaky=True, alpha=alpha)(
         d
-    )  # (bs, 30, 30, 1)
+    )  # (bs, 64, 64, 128)
+    d = downsample(256, conv_size, norm_type, leaky=True, alpha=alpha)(
+        d
+    )  # (bs, 32, 32, 256)
+    d = downsample(512, conv_size, norm_type, leaky=True, alpha=alpha)(
+        d
+    )  # (bs, 16, 16, 512)
+
+    d = downsample(1, conv_size, strides=(1, 1), activation=None)(d)  # (bs, 30, 30, 1)
 
     model = Model(inpt, d)
-    model.compile(loss="mse", optimizer=optimizer)
+    model.compile(loss="mse", optimizer=opt, loss_weights=[loss_weight])
     return model
 
 
-def discriminator_loss(real, generated):
+def discriminator_loss_cross_entropy(real, generated):
+    real_loss = loss(tf.ones_like(real), real)
+    gen_loss = loss(tf.zeros_like(generated), generated)
+    return (real_loss + gen_loss) * 0.5
+
+
+def discriminator_loss_least_squares(real, generated):
+    return tf.math.square(real - 1) + tf.math.square(generated)
+
+
+def discriminator_loss(real, generated, loss_type="least_squares"):
     """
     Quantifies how well the disciminator is able to distinguish real
     images from fakes. It compares the disriminator's predictions on
     real images to an array of 1s, and the predictions on generated
     images to an array of 0s.
     """
-    # real_loss = loss(tf.ones_like(real), real)
-    # gen_loss = loss(tf.zeros_like(generated), generated)
-    # return (real_loss + gen_loss) * 0.5
-    # use least squares loss
-    return tf.math.square(real - 1) + tf.math.square(generated)
+    if loss_type == "cross_entropy":
+        return discriminator_loss_cross_entropy(real, generated)
+
+    if loss_type == "least_squares":
+        return discriminator_loss_least_squares(real, generated)
+
+    return None
 
 
-def generator_loss(validity):
+def generator_loss_cross_entropy(validity):
+    return loss(tf.ones_like(validity), validity)
+
+
+def generator_loss_least_squares(validity):
+    return tf.math.square(validity - 1)
+
+
+def generator_loss(validity, loss_type="least_squares"):
     """
     Quantifies how well the the generator was able to trick the
     discriminator. This can be measured by comparing the
     discriminator's predictions on generated images to
     and array of 1s.
     """
-    # return loss(tf.ones_like(validity), validity)
-    # use least squares loss
-    return tf.math.square(validity - 1)
+    if loss_type == "cross_entropy":
+        return generator_loss_cross_entropy(validity)
+
+    if loss_type == "least_squares":
+        return generator_loss_least_squares(validity)
+
+    return None
 
 
-def optimizer():
+def optimizer(learning_rate=2e-4):
     """
     Creates an optimizer.
     """
-    return Adam(learning_rate=2e-4, beta_1=0.5)
+    return Adam(learning_rate=learning_rate, beta_1=0.5)
 
 
 def aggregate_losses(losses, n):
