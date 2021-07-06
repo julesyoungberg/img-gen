@@ -29,7 +29,7 @@ class CycleGAN:
         norm_type="instancenorm",
         learning_rate=2e-4,
         loss_type="least_squares",
-        gen_type="resnet",
+        gen_type="unet",
     ):
         self.loss_type = loss_type
         self.num_channels = num_channels
