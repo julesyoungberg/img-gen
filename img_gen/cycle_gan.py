@@ -78,6 +78,8 @@ class CycleGAN:
                 apply_dropout=True,
                 dropout=0.5,
             )
+        else:
+            raise ValueError("invalid gen_type")
 
         # discriminator x determines whether an image belongs to set X
         self.discriminator_x = discriminator(
