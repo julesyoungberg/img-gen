@@ -30,11 +30,13 @@ class CycleGAN:
         learning_rate=2e-4,
         loss_type="least_squares",
         gen_type="unet",
+        use_identity=True,
     ):
         self.loss_type = loss_type
         self.num_channels = num_channels
         self.width = width
         self.height = height
+        self.use_identity = use_identity
 
         image_shape = (height, width, num_channels)
 
@@ -121,7 +123,7 @@ class CycleGAN:
         return ckpt_manager
 
     @tf.function
-    def calculate_losses(self, real_x, real_y, lmbd=10, use_identity=True):
+    def calculate_losses(self, real_x, real_y, lmbd=10):
         # 1. get the predictions
         # generator G translates X -> Y
         # generator F translates Y -> X
@@ -153,7 +155,7 @@ class CycleGAN:
         gen_f_loss = gen_f_adv_loss + total_cycle_loss
 
         # optionally add identity loss
-        if use_identity:
+        if self.use_identity:
             gen_g_loss += image_diff(real_x, id_x) * 0.5 * lmbd
             gen_f_loss += image_diff(real_y, id_y) * 0.5 * lmbd
 
