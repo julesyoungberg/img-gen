@@ -26,11 +26,15 @@ class CycleGAN:
         num_channels=3,
         width=256,
         height=256,
-        norm_type="instancenorm",
+        norm_type="instancenorm",  # batchnorm | instancenorm
         learning_rate=2e-4,
-        loss_type="least_squares",
+        loss_type="cross_entropy",  # cross_entropy | least_squares
         gen_type="unet",
         use_identity=True,
+        gen_dropout=0.5,
+        gen_apply_dropout=False,
+        dis_loss_weight=0.5,
+        dis_alpha=0.2,
     ):
         self.loss_type = loss_type
         self.num_channels = num_channels
@@ -68,15 +72,15 @@ class CycleGAN:
             self.generator_g = unet_generator(
                 image_shape=image_shape,
                 norm_type=norm_type,
-                apply_dropout=True,
-                dropout=0.5,
+                apply_dropout=gen_apply_dropout,
+                dropout=gen_dropout,
             )
             # generator F maps from image set Y to X
             self.generator_f = unet_generator(
                 image_shape=image_shape,
                 norm_type=norm_type,
-                apply_dropout=True,
-                dropout=0.5,
+                apply_dropout=gen_apply_dropout,
+                dropout=gen_dropout,
             )
         else:
             raise ValueError("invalid gen_type")
@@ -86,16 +90,16 @@ class CycleGAN:
             self.discriminator_x_optimizer,
             image_shape=image_shape,
             norm_type=norm_type,
-            loss_weight=0.5,
-            alpha=0.2,
+            loss_weight=dis_loss_weight,
+            alpha=dis_alpha,
         )
         # discriminator y determines whether an image belongs to set Y
         self.discriminator_y = discriminator(
             self.discriminator_y_optimizer,
             image_shape=image_shape,
             norm_type=norm_type,
-            loss_weight=0.5,
-            alpha=0.2,
+            loss_weight=dis_loss_weight,
+            alpha=dis_alpha,
         )
 
     def initialize_checkpoint_manager(self):
