@@ -35,12 +35,14 @@ class CycleGAN:
         gen_apply_dropout=False,
         dis_loss_weight=0.5,
         dis_alpha=0.2,
+        lmbd=10,
     ):
         self.loss_type = loss_type
         self.num_channels = num_channels
         self.width = width
         self.height = height
         self.use_identity = use_identity
+        self.lmbd = lmbd
 
         image_shape = (height, width, num_channels)
 
@@ -129,7 +131,7 @@ class CycleGAN:
         return ckpt_manager
 
     @tf.function
-    def calculate_losses(self, real_x, real_y, lmbd=10):
+    def calculate_losses(self, real_x, real_y):
         # 1. get the predictions
         # generator G translates X -> Y
         # generator F translates Y -> X
@@ -154,7 +156,7 @@ class CycleGAN:
 
         x_cycle_loss = image_diff(real_x, cycled_x)
         y_cycle_loss = image_diff(real_y, cycled_y)
-        total_cycle_loss = (x_cycle_loss + y_cycle_loss) * lmbd
+        total_cycle_loss = (x_cycle_loss + y_cycle_loss) * self.lmbd
 
         # generator losses
         gen_g_loss = gen_g_adv_loss + total_cycle_loss
@@ -162,8 +164,8 @@ class CycleGAN:
 
         # optionally add identity loss
         if self.use_identity:
-            gen_g_loss += image_diff(real_x, id_x) * 0.5 * lmbd
-            gen_f_loss += image_diff(real_y, id_y) * 0.5 * lmbd
+            gen_g_loss += image_diff(real_x, id_x) * 0.5 * self.lmbd
+            gen_f_loss += image_diff(real_y, id_y) * 0.5 * self.lmbd
 
         # discriminator losses
         dis_x_loss = discriminator_loss(
@@ -176,14 +178,14 @@ class CycleGAN:
         return gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss
 
     @tf.function
-    def train_step(self, real_x, real_y, lmbd=10):
+    def train_step(self, real_x, real_y):
         """
         Executes a single training step.
         Generates images, computes losses, computes gradients, updates models.
         """
         with tf.GradientTape(persistent=True) as tape:
             gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss = self.calculate_losses(
-                real_x, real_y, lmbd=lmbd
+                real_x, real_y
             )
 
         # 3. calculate gradients for generator and discriminator
@@ -275,10 +277,18 @@ class CycleGAN:
             percent_done = 0
             prev_done = 0
 
-            data = enumerate(tf.data.Dataset.zip((train_X, train_y)))
+            # shuffle data each epoch
+            data = enumerate(
+                tf.data.Dataset.zip(
+                    (tf.random.shuffle(train_X), tf.random.shuffle(train_y))
+                )
+            )
+
+            # run the train_step algorithm for each image
             for k, (real_x, real_y) in data:
                 self.train_step(tf.reshape(real_x, shape), tf.reshape(real_y, shape))
 
+                # visual feedback
                 percent_done = int(k / num_samples * 100)
                 while prev_done < percent_done:
                     print(".", end="")
@@ -307,7 +317,7 @@ class CycleGAN:
         plt.legend()
         plt.show()
 
-    def score(self, test_x, test_y, lmbd=10):
+    def score(self, test_x, test_y):
         tf.config.run_functions_eagerly(True)
 
         shape = (1, self.height, self.width, self.num_channels)
@@ -323,7 +333,7 @@ class CycleGAN:
             real_y = tf.reshape(raw_y, shape)
 
             gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss = self.calculate_losses(
-                real_x, real_y, lmbd=lmbd
+                real_x, real_y
             )
 
             # save the losses
