@@ -70,21 +70,26 @@ class CycleGAN:
         self.lmbd = lmbd
         self.use_cloud = use_cloud
         self.cloud_bucket = cloud_bucket
+        self.show_images = show_images
+        self.save_images = save_images
+        self.save_models = save_models
         self.setup()
         self.name = name
-        self.show_images = show_images
 
     def setup(self):
         self.name = (
-            "gen_type=" + self.gen_type + "__learning_rate=" + self.learning_rate
+            "gen_type=" + self.gen_type + "__learning_rate=" + str(self.learning_rate)
         )
         self.name += "__loss_type=" + self.loss_type + "__gen_type=" + self.gen_type
         self.name += (
-            "__use_identity=" + self.use_identity + "__gen_dropout=" + self.gen_dropout
+            "__use_identity="
+            + str(self.use_identity)
+            + "__gen_dropout="
+            + str(self.gen_dropout)
         )
-        self.name += "__gen_apply_dropout=" + self.gen_apply_dropout
-        self.name += "__dis_loss_weight=" + self.dis_loss_weight
-        self.name += "__dis_alpha=" + self.dis_alpha + "__lmbd=" + self.lmbd
+        self.name += "__gen_apply_dropout=" + str(self.gen_apply_dropout)
+        self.name += "__dis_loss_weight=" + str(self.dis_loss_weight)
+        self.name += "__dis_alpha=" + str(self.dis_alpha) + "__lmbd=" + str(self.lmbd)
 
         image_shape = (self.height, self.width, self.num_channels)
 
@@ -366,7 +371,7 @@ class CycleGAN:
 
             plt.savefig(path)
 
-    def save_models(self):
+    def save_current_models(self):
         save_dir = "./models/"
 
         if self.use_cloud:
@@ -439,7 +444,7 @@ class CycleGAN:
                 print(f"saving checkpoint at {ckpt_save_path}")
 
         if self.save_models:
-            self.save_models()
+            self.save_current_models()
 
     def fit(
         self, train_X, train_y, test_X=None, test_y=None, epochs=5, checkpoints=True
