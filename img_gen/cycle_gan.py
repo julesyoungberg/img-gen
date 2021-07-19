@@ -521,9 +521,9 @@ def find_optimal_cycle_gan(
     # build base model
     cycle_gan = CycleGAN(
         **params,
-        show_images=True,
+        show_images=False,
         save_images=False,
-        save_models=True,
+        save_models=False,
     )
 
     # find best paramns
@@ -533,7 +533,13 @@ def find_optimal_cycle_gan(
     print(f"Best Params: {grid_result.best_params_}")
 
     # build and train optimal model
-    cycle_gan = CycleGAN(**params, **grid_result.best_params_)
+    cycle_gan = CycleGAN(
+        **params,
+        **grid_result.best_params_,
+        show_images=False,
+        save_images=True,
+        save_models=True,
+    )
     cycle_gan.train(
         train_X, train_y, test_X, test_y, epochs=40, checkpoints=checkpoints
     )
