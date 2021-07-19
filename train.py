@@ -1,14 +1,14 @@
-import tensorflow_cloud as tfc
+# import tensorflow_cloud as tfc
 
 GCP_BUCKET = "img-gen-training"
 
-tfc.run(
-    requirements_txt="requirements.txt",
-    stream_logs=True,
-    worker_count=0,
-    # https://github.com/tensorflow/cloud/blob/d509c231d6b2efec34a0af5da0ee02535a1f746d/src/python/tensorflow_cloud/core/machine_config.py#L116
-    chief_config=tfc.COMMON_MACHINE_CONFIGS["K80_8X"],
-)
+# tfc.run(
+#     requirements_txt="requirements.txt",
+#     stream_logs=True,
+#     worker_count=0,
+#     # https://github.com/tensorflow/cloud/blob/d509c231d6b2efec34a0af5da0ee02535a1f746d/src/python/tensorflow_cloud/core/machine_config.py#L116
+#     chief_config=tfc.COMMON_MACHINE_CONFIGS["K80_8X"],
+# )
 
 import tensorflow_datasets as tfds
 
@@ -16,6 +16,7 @@ from img_gen.cycle_gan import find_optimal_cycle_gan
 from img_gen.img import preprocess_images
 
 # load the data set
+print("loading data")
 data, metadata = tfds.load(
     "cycle_gan/vangogh2photo",
     with_info=True,
@@ -26,12 +27,14 @@ train_x, train_y = data["trainA"], data["trainB"]
 test_x, test_y = data["testA"], data["testB"]
 
 # preprocess data
+print("preprocessing data")
 train_x = preprocess_images(train_x, jitter=True)
 train_y = preprocess_images(train_y, jitter=True)
 test_x = preprocess_images(test_x)
 test_y = preprocess_images(test_y)
 
 # build & train the model
+print("finding optimal cycle gan")
 cyc_gan = find_optimal_cycle_gan(
     train_x,
     train_y,

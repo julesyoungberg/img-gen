@@ -72,6 +72,7 @@ class CycleGAN:
         self.cloud_bucket = cloud_bucket
         self.setup()
         self.name = name
+        self.show_images = show_images
 
     def setup(self):
         self.name = self.gen_type + "_" + self.norm_type + "_" + self.loss_type
