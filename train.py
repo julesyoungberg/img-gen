@@ -5,6 +5,7 @@ GCP_BUCKET = "img-gen-training"
 tfc.run(
     requirements_txt="requirements.txt",
     stream_logs=True,
+    worker_count=0,
     # https://github.com/tensorflow/cloud/blob/d509c231d6b2efec34a0af5da0ee02535a1f746d/src/python/tensorflow_cloud/core/machine_config.py#L116
     chief_config=tfc.COMMON_MACHINE_CONFIGS["K80_8X"],
 )

@@ -20,7 +20,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
 from tensorflow_addons.layers import InstanceNormalization
 
-loss = BinaryCrossentropy(from_logits=True)
+loss = BinaryCrossentropy(from_logits=True, reduction=tf.keras.losses.Reduction.SUM)
 
 
 def downsample(
