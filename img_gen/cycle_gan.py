@@ -75,7 +75,16 @@ class CycleGAN:
         self.show_images = show_images
 
     def setup(self):
-        self.name = self.gen_type + "_" + self.norm_type + "_" + self.loss_type
+        self.name = (
+            "gen_type=" + self.gen_type + "__learning_rate=" + self.learning_rate
+        )
+        self.name += "__loss_type=" + self.loss_type + "__gen_type=" + self.gen_type
+        self.name += (
+            "__use_identity=" + self.use_identity + "__gen_dropout=" + self.gen_dropout
+        )
+        self.name += "__gen_apply_dropout=" + self.gen_apply_dropout
+        self.name += "__dis_loss_weight=" + self.dis_loss_weight
+        self.name += "__dis_alpha=" + self.dis_alpha + "__lmbd=" + self.lmbd
 
         image_shape = (self.height, self.width, self.num_channels)
 
