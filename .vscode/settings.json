@@ -1,4 +1,4 @@
 {
-    "jupyter.jupyterServerType": "remote",
-    "python.formatting.provider": "black"
+  "jupyter.jupyterServerType": "remote",
+  "python.formatting.provider": "black"
 }

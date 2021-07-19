@@ -1,0 +1,6 @@
+# requirements for running with tensorflow_cloud
+matplotlib==3.3.4
+numpy==1.19.2
+scikit-learn==0.24.2
+tensorflow-addons==0.13.0
+tensorflow-datasets==4.3.0

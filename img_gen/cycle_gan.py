@@ -1,7 +1,9 @@
+import os
 import time
 
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.model_selection import GridSearchCV
 import tensorflow as tf
 
 from img_gen.img import image_diff
@@ -14,6 +16,16 @@ from img_gen.models import (
     unet_generator,
     optimizer,
 )
+
+GRID_PARAMETERS = {
+    "norm_type": ("batchnorm", "instancenorm"),
+    "loss_type": ("cross_entropy", "least_squares"),
+    "gen_type": ("unet", "resnet"),
+    "use_identity": (False, True),
+    "gen_apply_dropout": (False, True),
+    "dis_loss_weight": (0.5, 0.75, 1.0),
+    "lmbd": (1, 5, 10),
+}
 
 
 class CycleGAN:
@@ -29,28 +41,48 @@ class CycleGAN:
         norm_type="instancenorm",  # batchnorm | instancenorm
         learning_rate=2e-4,
         loss_type="cross_entropy",  # cross_entropy | least_squares
-        gen_type="unet",
+        gen_type="unet",  # unet | resnet
         use_identity=True,
         gen_dropout=0.5,
         gen_apply_dropout=False,
         dis_loss_weight=0.5,
         dis_alpha=0.2,
         lmbd=10,
+        use_cloud=False,
+        cloud_bucket="img-gen-training",
+        name="",
+        show_images=True,
+        save_images=False,
+        save_models=True,
     ):
-        self.loss_type = loss_type
         self.num_channels = num_channels
         self.width = width
         self.height = height
+        self.norm_type = norm_type
+        self.learning_rate = learning_rate
+        self.loss_type = loss_type
+        self.gen_type = gen_type
         self.use_identity = use_identity
+        self.gen_dropout = gen_dropout
+        self.gen_apply_dropout = gen_apply_dropout
+        self.dis_loss_weight = dis_loss_weight
+        self.dis_alpha = dis_alpha
         self.lmbd = lmbd
+        self.use_cloud = use_cloud
+        self.cloud_bucket = cloud_bucket
+        self.setup()
+        self.name = name
 
-        image_shape = (height, width, num_channels)
+    def setup(self):
+        self.name = self.gen_type + "_" + self.norm_type + "_" + self.loss_type
+
+        image_shape = (self.height, self.width, self.num_channels)
 
         # optimizers
-        self.generator_g_optimizer = optimizer(learning_rate=learning_rate)
-        self.generator_f_optimizer = optimizer(learning_rate=learning_rate)
-        self.discriminator_x_optimizer = optimizer(learning_rate=learning_rate)
-        self.discriminator_y_optimizer = optimizer(learning_rate=learning_rate)
+        self.generator_g_optimizer = optimizer(learning_rate=self.learning_rate)
+        self.generator_f_optimizer = optimizer(learning_rate=self.learning_rate)
+        self.discriminator_x_optimizer = optimizer(learning_rate=self.learning_rate)
+        self.discriminator_y_optimizer = optimizer(learning_rate=self.learning_rate)
 
         # losses
         self.generator_g_losses = []
@@ -58,31 +90,31 @@ class CycleGAN:
         self.discriminator_y_losses = []
         self.discriminator_x_losses = []
 
-        if gen_type == "resnet":
+        if self.gen_type == "resnet":
             # generator G maps from image set X to Y
             self.generator_g = resnet_generator(
                 image_shape=image_shape,
-                norm_type=norm_type,
+                norm_type=self.norm_type,
             )
             # generator F maps from image set Y to X
             self.generator_f = resnet_generator(
                 image_shape=image_shape,
-                norm_type=norm_type,
+                norm_type=self.norm_type,
             )
-        elif gen_type == "unet":
+        elif self.gen_type == "unet":
             # generator G maps from image set X to Y
             self.generator_g = unet_generator(
                 image_shape=image_shape,
-                norm_type=norm_type,
-                apply_dropout=gen_apply_dropout,
-                dropout=gen_dropout,
+                norm_type=self.norm_type,
+                apply_dropout=self.gen_apply_dropout,
+                dropout=self.gen_dropout,
             )
             # generator F maps from image set Y to X
             self.generator_f = unet_generator(
                 image_shape=image_shape,
-                norm_type=norm_type,
-                apply_dropout=gen_apply_dropout,
-                dropout=gen_dropout,
+                norm_type=self.norm_type,
+                apply_dropout=self.gen_apply_dropout,
+                dropout=self.gen_dropout,
             )
         else:
             raise ValueError("invalid gen_type")
@@ -91,24 +123,76 @@ class CycleGAN:
         self.discriminator_x = discriminator(
             self.discriminator_x_optimizer,
             image_shape=image_shape,
-            norm_type=norm_type,
-            loss_weight=dis_loss_weight,
-            alpha=dis_alpha,
+            norm_type=self.norm_type,
+            loss_weight=self.dis_loss_weight,
+            alpha=self.dis_alpha,
         )
         # discriminator y determines whether an image belongs to set Y
         self.discriminator_y = discriminator(
             self.discriminator_y_optimizer,
             image_shape=image_shape,
-            norm_type=norm_type,
-            loss_weight=dis_loss_weight,
-            alpha=dis_alpha,
+            norm_type=self.norm_type,
+            loss_weight=self.dis_loss_weight,
+            alpha=self.dis_alpha,
         )
+
+    def get_params(self, deep=False):
+        return {
+            "norm_type": self.norm_type,
+            "learning_rate": self.learning_rate,
+            "loss_type": self.loss_type,
+            "gen_type": self.gen_type,
+            "use_identity": self.use_identity,
+            "gen_dropout": self.gen_dropout,
+            "gen_apply_dropout": self.gen_apply_dropout,
+            "dis_loss_weight": self.dis_loss_weight,
+            "dis_alpha": self.dis_alpha,
+            "lmbd": self.lmbd,
+        }
+
+    def set_params(self, **params):
+        if "norm_type" in params:
+            self.norm_type = params["norm_type"]
+
+        if "learning_rate" in params:
+            self.learning_rate = params["learning_rate"]
+
+        if "loss_type" in params:
+            self.loss_type = params["loss_type"]
+
+        if "gen_type" in params:
+            self.gen_type = params["gen_type"]
+
+        if "use_identity" in params:
+            self.use_identity = params["use_identity"]
+
+        if "gen_dropout" in params:
+            self.gen_dropout = params["gen_dropout"]
+
+        if "gen_apply_dropout" in params:
+            self.gen_apply_dropout = params["gen_apply_dropout"]
+
+        if "dis_loss_weight" in params:
+            self.dis_loss_weight = params["dis_loss_weight"]
+
+        if "dis_alpha" in params:
+            self.dis_alpha = params["dis_alpha"]
+
+        if "lmbd" in params:
+            self.lmbd = params["lmbd"]
+
+        return self
 
     def initialize_checkpoint_manager(self):
         """
         Initialize checkpoints and restore if possible.
         """
         checkpoint_path = "./checkpoints/train"
+
+        if self.use_cloud:
+            checkpoint_path = os.path.join(
+                "gs://", self.cloud_bucket, self.name, "save_at_{epoch}"
+            )
 
         ckpt = tf.train.Checkpoint(
             generator_g=self.generator_g,
@@ -230,7 +314,7 @@ class CycleGAN:
         print("dis_x: ", self.discriminator_x_losses[-1].numpy(), end=", ")
         print("dis_y: ", self.discriminator_y_losses[-1].numpy())
 
-    def generate_images(self, test_X, test_y):
+    def generate_images(self, test_X, test_y, epoch=None, typ="test"):
         """
         Generates image from the test input.
         """
@@ -254,9 +338,38 @@ class CycleGAN:
             plt.axis("off")
 
         plt.tight_layout()
-        plt.show()
 
-    def train(self, train_X, train_y, test_X, test_y, epochs=40, checkpoints=True):
+        if self.show_images:
+            plt.show()
+
+        if self.save_images:
+            filename = typ + "_generations"
+            if epoch is not None:
+                filename += "_" + epoch
+            filename += ".png"
+
+            path = "./images/" + filename
+            if self.use_cloud:
+                path = os.path.join(
+                    "gs://", self.cloud_bucket, self.name, "images", filename
+                )
+
+            plt.savefig(path)
+
+    def save_models(self):
+        save_dir = "./models/"
+
+        if self.use_cloud:
+            os.path.join("gs://", self.cloud_bucket, self.name, "models")
+
+        self.generator_g.save(os.path.join(save_dir, "generator_g"))
+        self.generator_f.save(os.path.join(save_dir, "generator_f"))
+        self.discriminator_x.save(os.path.join(save_dir, "discriminator_x"))
+        self.discriminator_y.save(os.path.join(save_dir, "discriminator_y"))
+
+    def train(
+        self, train_X, train_y, test_X=None, test_y=None, epochs=40, checkpoints=True
+    ):
         """
         Train the networks.
         """
@@ -267,20 +380,26 @@ class CycleGAN:
 
         shape = (1, self.height, self.width, self.num_channels)
 
+        test_X = tf.data.Dataset(test_X) if test_X is not None else None
+        test_y = tf.data.Dataset(test_y) if test_y is not None else None
+
         # self.generate_images(test_x, test_y)
 
         for epoch in range(epochs):
             print(f"epoch: {epoch} ", end="")
             start = time.time()
 
+            train_X = tf.data.Dataset.from_tensor_slices(np.random.permutation(train_X))
+            train_y = tf.data.Dataset.from_tensor_slices(np.random.permutation(train_y))
+
             num_samples = len(train_X)
             percent_done = 0
             prev_done = 0
 
-            # shuffle data each epoch
             data = enumerate(
                 tf.data.Dataset.zip(
-                    (tf.random.shuffle(train_X), tf.random.shuffle(train_y))
+                    (train_X, train_y)
+                    # (tf.random.shuffle(train_X), tf.random.shuffle(train_y))
                 )
             )
 
@@ -298,11 +417,31 @@ class CycleGAN:
 
             self.aggregate_losses(num_samples)
             self.print_losses()
-            self.generate_images(test_X, test_y)
 
+            self.generate_images(train_X, train_y)
+
+            if test_X is not None and test_y is not None:
+                self.generate_images(test_X, test_y)
+
+            # save checkpoint every 5 epochs
             if checkpoints and (epoch + 1) % 5 == 0:
                 ckpt_save_path = ckpt_manager.save()
                 print(f"saving checkpoint at {ckpt_save_path}")
+
+        if self.save_models:
+            self.save_models()
+
+    def fit(
+        self, train_X, train_y, test_X=None, test_y=None, epochs=5, checkpoints=True
+    ):
+        self.train(
+            train_X,
+            train_y,
+            test_X=test_X,
+            test_y=test_y,
+            epochs=epochs,
+            checkpoints=True,
+        )
 
     def plot_losses(self):
         plt.plot(self.generator_g_losses, label="gen_g")
@@ -317,8 +456,19 @@ class CycleGAN:
         plt.legend()
         plt.show()
 
-    def score(self, test_x, test_y):
+        if self.save_images:
+            path = "./images/losses.png"
+
+            if self.use_cloud:
+                path = os.path.join("gs://", self.cloud_bucket, self.name, "losses.png")
+
+            plt.savefig(path)
+
+    def scores(self, test_x, test_y):
         tf.config.run_functions_eagerly(True)
+
+        test_x = tf.data.Dataset(test_x)
+        test_y = tf.data.Dataset(test_y)
 
         shape = (1, self.height, self.width, self.num_channels)
 
@@ -348,3 +498,42 @@ class CycleGAN:
             dis_x_losses.mean(),
             dis_y_losses.mean(),
         )
+
+    def score(self, test_x, test_y):
+        (gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss) = self.scores(test_x, test_y)
+        return np.array([gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss]).mean()
+
+
+def find_optimal_cycle_gan(
+    train_X, train_y, test_X, test_y, epochs=40, checkpoints=True, **params
+):
+    # balance the datasets for the grid search
+    grid_X = train_X
+    grid_y = train_y
+
+    if len(grid_X) < len(grid_y):
+        grid_y = grid_y[0 : len(grid_X), :]
+
+    if len(grid_y) < len(grid_X):
+        grid_X = grid_X[0 : len(grid_y), :]
+
+    # build base model
+    cycle_gan = CycleGAN(
+        **params,
+        show_images=True,
+        save_images=False,
+        save_models=True,
+    )
+
+    # find best paramns
+    print("running grid search CV")
+    clf = GridSearchCV(cycle_gan, GRID_PARAMETERS, cv=3)
+    grid_result = clf.fit(grid_X, grid_y)
+    print(f"Best Params: {grid_result.best_params_}")
+
+    # build and train optimal model
+    cycle_gan = CycleGAN(**params, **grid_result.best_params_)
+    cycle_gan.train(
+        train_X, train_y, test_X, test_y, epochs=40, checkpoints=checkpoints
+    )
+    return cycle_gan
