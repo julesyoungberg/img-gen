@@ -346,6 +346,9 @@ class CycleGAN:
         y_hat = self.generator_g.predict(x.reshape(shape))
         x_hat = self.generator_f.predict(y.reshape(shape))
 
+        if not self.show_images:
+            plt.ioff()
+
         # plot images
         fig = plt.figure(figsize=(12, 12))
 
@@ -373,6 +376,9 @@ class CycleGAN:
                 save_figure(fig, path)
             else:
                 plt.savefig(path)
+
+        if not self.show_images:
+            plt.ion()
 
     def save_current_models(self):
         save_dir = "./models/"
