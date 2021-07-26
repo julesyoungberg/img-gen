@@ -16,6 +16,7 @@ from img_gen.models import (
     unet_generator,
     optimizer,
 )
+from img_gen.storage import save_figure
 
 GRID_PARAMETERS = {
     "norm_type": ("batchnorm", "instancenorm"),
@@ -53,7 +54,7 @@ class CycleGAN:
         name="",
         show_images=True,
         save_images=False,
-        save_models=True,
+        save_models=False,
     ):
         self.num_channels = num_channels
         self.width = width
@@ -329,12 +330,15 @@ class CycleGAN:
         print("dis_x: ", self.discriminator_x_losses[-1].numpy(), end=", ")
         print("dis_y: ", self.discriminator_y_losses[-1].numpy())
 
-    def generate_images(self, test_X, test_y, epoch=None, typ="test"):
+    def generate_images(self, test_x, test_y, epoch=None, typ="test"):
         """
         Generates image from the test input.
         """
+        if not self.show_images and not self.save_images:
+            return
+
         # sample images
-        x = next(iter(test_X.shuffle(1000))).numpy()
+        x = next(iter(test_x.shuffle(1000))).numpy()
         y = next(iter(test_y.shuffle(1000))).numpy()
 
         # get predictions for those images
@@ -343,9 +347,9 @@ class CycleGAN:
         x_hat = self.generator_f.predict(y.reshape(shape))
 
         # plot images
-        plt.figure(figsize=(12, 12))
+        fig = plt.figure(figsize=(12, 12))
 
-        images = [x[0], y_hat[0], y[0], x_hat[0]]
+        images = [x, y_hat[0], y, x_hat[0]]
 
         for i in range(4):
             plt.subplot(2, 2, i + 1)
@@ -360,16 +364,15 @@ class CycleGAN:
         if self.save_images:
             filename = typ + "_generations"
             if epoch is not None:
-                filename += "_" + epoch
+                filename += "_" + str(epoch)
             filename += ".png"
 
             path = "./images/" + filename
             if self.use_cloud:
-                path = os.path.join(
-                    "gs://", self.cloud_bucket, self.name, "images", filename
-                )
-
-            plt.savefig(path)
+                path = f"{self.name}/images/{filename}"
+                save_figure(fig, path)
+            else:
+                plt.savefig(path)
 
     def save_current_models(self):
         save_dir = "./models/"
@@ -383,7 +386,13 @@ class CycleGAN:
         self.discriminator_y.save(os.path.join(save_dir, "discriminator_y"))
 
     def train(
-        self, train_X, train_y, test_X=None, test_y=None, epochs=40, checkpoints=True
+        self,
+        train_x_,
+        train_y_,
+        test_x_=None,
+        test_y_=None,
+        epochs=40,
+        checkpoints=False,
     ):
         """
         Train the networks.
@@ -395,26 +404,36 @@ class CycleGAN:
 
         shape = (1, self.height, self.width, self.num_channels)
 
-        test_X = tf.data.Dataset(test_X) if test_X is not None else None
-        test_y = tf.data.Dataset(test_y) if test_y is not None else None
+        test_x = None
+        if test_x_ is not None:
+            test_x = tf.data.Dataset.from_tensor_slices(test_x_)
 
-        # self.generate_images(test_x, test_y)
+        test_y = None
+        if test_y_ is not None:
+            test_y = tf.data.Dataset.from_tensor_slices(test_y_)
+
+        if test_x is not None and test_y is not None:
+            self.generate_images(test_x, test_y, epoch=-1)
 
         for epoch in range(epochs):
             print(f"epoch: {epoch} ", end="")
             start = time.time()
 
-            train_X = tf.data.Dataset.from_tensor_slices(np.random.permutation(train_X))
-            train_y = tf.data.Dataset.from_tensor_slices(np.random.permutation(train_y))
+            train_x = tf.data.Dataset.from_tensor_slices(
+                np.random.permutation(train_x_)
+            )
+            train_y = tf.data.Dataset.from_tensor_slices(
+                np.random.permutation(train_y_)
+            )
 
-            num_samples = len(train_X)
+            num_samples = len(train_x)
             percent_done = 0
             prev_done = 0
 
             data = enumerate(
                 tf.data.Dataset.zip(
-                    (train_X, train_y)
-                    # (tf.random.shuffle(train_X), tf.random.shuffle(train_y))
+                    (train_x, train_y)
+                    # (tf.random.shuffle(train_x), tf.random.shuffle(train_y))
                 )
             )
 
@@ -433,10 +452,10 @@ class CycleGAN:
             self.aggregate_losses(num_samples)
             self.print_losses()
 
-            self.generate_images(train_X, train_y)
+            self.generate_images(train_x, train_y, typ="train", epoch=epoch)
 
-            if test_X is not None and test_y is not None:
-                self.generate_images(test_X, test_y)
+            if test_x is not None and test_y is not None:
+                self.generate_images(test_x, test_y, typ="test", epoch=epoch)
 
             # save checkpoint every 5 epochs
             if checkpoints and (epoch + 1) % 5 == 0:
@@ -447,18 +466,20 @@ class CycleGAN:
             self.save_current_models()
 
     def fit(
-        self, train_X, train_y, test_X=None, test_y=None, epochs=5, checkpoints=True
+        self, train_x, train_y, test_x=None, test_y=None, epochs=5, checkpoints=True
     ):
         self.train(
-            train_X,
+            train_x,
             train_y,
-            test_X=test_X,
+            test_x=test_x,
             test_y=test_y,
             epochs=epochs,
             checkpoints=True,
         )
 
     def plot_losses(self):
+        fig = plt.figure(figsize=(12, 12))
+
         plt.plot(self.generator_g_losses, label="gen_g")
         plt.plot(self.generator_f_losses, label="gen_f")
         plt.plot(self.discriminator_x_losses, label="dis_x")
@@ -475,9 +496,10 @@ class CycleGAN:
             path = "./images/losses.png"
 
             if self.use_cloud:
-                path = os.path.join("gs://", self.cloud_bucket, self.name, "losses.png")
-
-            plt.savefig(path)
+                path = f"{self.cloud_bucket}/{self.name}/losses.png"
+                save_figure(fig, path)
+            else:
+                plt.savefig(path)
 
     def scores(self, test_x, test_y):
         tf.config.run_functions_eagerly(True)
@@ -520,10 +542,10 @@ class CycleGAN:
 
 
 def find_optimal_cycle_gan(
-    train_X, train_y, test_X, test_y, epochs=40, checkpoints=True, **params
+    train_x, train_y, test_x, test_y, epochs=40, checkpoints=True, **params
 ):
     # balance the datasets for the grid search
-    grid_X = train_X
+    grid_X = train_x
     grid_y = train_y
 
     if len(grid_X) < len(grid_y):
@@ -555,6 +577,6 @@ def find_optimal_cycle_gan(
         save_models=True,
     )
     cycle_gan.train(
-        train_X, train_y, test_X, test_y, epochs=40, checkpoints=checkpoints
+        train_x, train_y, test_x, test_y, epochs=40, checkpoints=checkpoints
     )
     return cycle_gan

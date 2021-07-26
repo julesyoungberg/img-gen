@@ -5,14 +5,17 @@ description = ""
 authors = ["Jules Youngberg <julesdayoungberg@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.7"
-tensorflow = "^2.5.0"
-tensorflow-addons = "^0.13.0"
-matplotlib = "^3.4.2"
+google-cloud-storage = "^1.41.0"
+google-cloud-logging = "^2.3.1" #DO NOT UPGRADE: google-cloud-error-reporting 1.1.2 requires google-cloud-logging<2.4,>=1.14.0
+google-cloud-error-reporting = "^1.2.0"
 jupyter = "^1.0.0"
 ipykernel = "^5.5.5"
+matplotlib = "^3.4.2"
 numpy = "^1.19.2"
+python = "^3.7"
 scikit-learn = "^0.24.2"
+tensorflow = "^2.5.0"
+tensorflow-addons = "^0.13.0"
 tensorflow-datasets = "^4.3.0"
 
 [tool.poetry.dev-dependencies]

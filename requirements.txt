@@ -1,4 +1,6 @@
-# requirements for running with tensorflow_cloud
+google-cloud-storage==1.41.0
+google-cloud-logging==2.3.1 #DO NOT UPGRADE: google-cloud-error-reporting 1.1.2 requires google-cloud-logging<2.4,>=1.14.0
+google-cloud-error-reporting==1.2.0
 matplotlib==3.3.4
 numpy==1.19.2
 scikit-learn==0.24.2
