@@ -325,10 +325,10 @@ class CycleGAN:
         self.discriminator_y_losses = aggregate_losses(self.discriminator_y_losses, n)
 
     def print_losses(self):
-        print("gen_g: ", self.generator_g_losses[-1].numpy(), end=", ")
-        print("gen_f: ", self.generator_f_losses[-1].numpy(), end=", ")
-        print("dis_x: ", self.discriminator_x_losses[-1].numpy(), end=", ")
-        print("dis_y: ", self.discriminator_y_losses[-1].numpy())
+        print("gen_g: ", self.generator_g_losses[-1].dataSync(), end=", ")
+        print("gen_f: ", self.generator_f_losses[-1].dataSync(), end=", ")
+        print("dis_x: ", self.discriminator_x_losses[-1].dataSync(), end=", ")
+        print("dis_y: ", self.discriminator_y_losses[-1].dataSync())
 
     def generate_images(self, test_x, test_y, epoch=None, typ="test"):
         """
