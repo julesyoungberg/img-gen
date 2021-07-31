@@ -338,13 +338,14 @@ class CycleGAN:
             return
 
         # sample images
-        x = next(iter(test_x.shuffle(1000))).numpy()
-        y = next(iter(test_y.shuffle(1000))).numpy()
+        img_shape = (self.height, self.width, self.num_channels)
+        x = next(iter(test_x.shuffle(1))).numpy().reshape(img_shape)
+        y = next(iter(test_y.shuffle(1))).numpy().reshape(img_shape)
 
         # get predictions for those images
         shape = (1, self.height, self.width, self.num_channels)
-        y_hat = self.generator_g.predict(x.reshape(shape))
-        x_hat = self.generator_f.predict(y.reshape(shape))
+        y_hat = self.generator_g.predict(x.reshape(shape)).reshape(img_shape)
+        x_hat = self.generator_f.predict(y.reshape(shape)).reshape(img_shape)
 
         if not self.show_images:
             plt.ioff()
@@ -393,59 +394,38 @@ class CycleGAN:
 
     def train(
         self,
-        train_x_,
-        train_y_,
-        test_x_=None,
-        test_y_=None,
-        epochs=40,
+        train_x,
+        train_y,
+        test_x=None,
+        test_y=None,
+        epochs=10,
         checkpoints=False,
     ):
         """
         Train the networks.
         """
-        tf.config.run_functions_eagerly(True)
+        # tf.config.run_functions_eagerly(True)
 
         if checkpoints:
             ckpt_manager = self.initialize_checkpoint_manager()
 
-        shape = (1, self.height, self.width, self.num_channels)
-
-        test_x = None
-        if test_x_ is not None:
-            test_x = tf.data.Dataset.from_tensor_slices(test_x_)
-
-        test_y = None
-        if test_y_ is not None:
-            test_y = tf.data.Dataset.from_tensor_slices(test_y_)
-
         if test_x is not None and test_y is not None:
             self.generate_images(test_x, test_y, epoch=-1)
+        print("training")
 
         for epoch in range(epochs):
             print(f"epoch: {epoch} ", end="")
             start = time.time()
 
-            train_x = tf.data.Dataset.from_tensor_slices(
-                np.random.permutation(train_x_)
-            )
-            train_y = tf.data.Dataset.from_tensor_slices(
-                np.random.permutation(train_y_)
-            )
-
             num_samples = len(train_x)
             percent_done = 0
             prev_done = 0
 
-            data = enumerate(
-                tf.data.Dataset.zip(
-                    (train_x, train_y)
-                    # (tf.random.shuffle(train_x), tf.random.shuffle(train_y))
-                )
-            )
+            data = enumerate(tf.data.Dataset.zip((train_x, train_y)))
 
             # run the train_step algorithm for each image
             for k, (real_x, real_y) in data:
-                self.train_step(tf.reshape(real_x, shape), tf.reshape(real_y, shape))
+                self.train_step(real_x, real_y)
 
                 # visual feedback
                 percent_done = int(k / num_samples * 100)
@@ -472,13 +452,13 @@ class CycleGAN:
             self.save_current_models()
 
     def fit(
-        self, train_x, train_y, test_x=None, test_y=None, epochs=5, checkpoints=True
+        self, train_x, train_y, test_x=None, test_y=None, epochs=2, checkpoints=True
     ):
         self.train(
-            train_x,
-            train_y,
-            test_x=test_x,
-            test_y=test_y,
+            tf.data.Dataset.from_tensor_slices(train_x),
+            tf.data.Dataset.from_tensor_slices(train_y),
+            test_x=tf.data.Dataset.from_tensor_slices(test_x),
+            test_y=tf.data.Dataset.from_tensor_slices(test_x),
             epochs=epochs,
             checkpoints=True,
         )
@@ -508,7 +488,7 @@ class CycleGAN:
                 plt.savefig(path)
 
     def scores(self, test_x, test_y):
-        tf.config.run_functions_eagerly(True)
+        # tf.config.run_functions_eagerly(True)
 
         test_x = tf.data.Dataset(test_x)
         test_y = tf.data.Dataset(test_y)
@@ -547,9 +527,17 @@ class CycleGAN:
         return np.array([gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss]).mean()
 
 
-def find_optimal_cycle_gan(
-    train_x, train_y, test_x, test_y, epochs=40, checkpoints=True, **params
+def to_numpy(data):
+    return np.array([d[0] for d in data])
+
+
+def find_optimal_params(
+    train_x_, train_y_, test_x_, test_y_, epochs=40, checkpoints=True, **params
 ):
+    train_x = to_numpy(train_x_)
+    train_y = to_numpy(train_y_)
+    test_x = to_numpy(test_x_)
+    test_y = to_numpy(test_y_)
     # balance the datasets for the grid search
     grid_X = train_x
     grid_y = train_y
@@ -573,16 +561,33 @@ def find_optimal_cycle_gan(
     clf = GridSearchCV(cycle_gan, GRID_PARAMETERS, cv=3)
     grid_result = clf.fit(grid_X, grid_y)
     print(f"Best Params: {grid_result.best_params_}")
+    return grid_result.best_params_
+
+
+def find_optimal_cycle_gan(
+    train_x, train_y, test_x, test_y, epochs=40, checkpoints=True, **params
+):
+    best_params = find_optimal_params(
+        train_x,
+        train_y,
+        test_x,
+        test_y,
+        epochs=epochs,
+        checkpoints=checkpoints,
+        **params,
+    )
 
     # build and train optimal model
     cycle_gan = CycleGAN(
         **params,
-        **grid_result.best_params_,
+        **best_params,
         show_images=False,
         save_images=True,
         save_models=True,
     )
+
     cycle_gan.train(
         train_x, train_y, test_x, test_y, epochs=40, checkpoints=checkpoints
     )
+
     return cycle_gan

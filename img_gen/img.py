@@ -64,9 +64,7 @@ def preprocess_images(images, width=256, height=256, jitter=False, buffer_size=1
     def f(image, _=None):
         return preprocess_image(image, width=width, height=height, jitter=jitter)
 
-    data = images.map(f)  # .cache().shuffle(buffer_size)
-
-    return np.array([np.array(d[0]) for d in data])
+    return images.map(f)  # .cache().shuffle(buffer_size)
 
 
 def image_diff(image1, image2):
