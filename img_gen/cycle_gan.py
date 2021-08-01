@@ -3,6 +3,7 @@ import time
 
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.base import BaseEstimator
 from sklearn.model_selection import GridSearchCV
 import tensorflow as tf
 
@@ -29,7 +30,7 @@ GRID_PARAMETERS = {
 }
 
 
-class CycleGAN:
+class CycleGAN(BaseEstimator):
     """
     The Cycle GAN architecture for image-to-image translation.
     """
@@ -325,10 +326,14 @@ class CycleGAN:
         self.discriminator_y_losses = aggregate_losses(self.discriminator_y_losses, n)
 
     def print_losses(self):
-        print("gen_g: ", self.generator_g_losses[-1].dataSync(), end=", ")
-        print("gen_f: ", self.generator_f_losses[-1].dataSync(), end=", ")
-        print("dis_x: ", self.discriminator_x_losses[-1].dataSync(), end=", ")
-        print("dis_y: ", self.discriminator_y_losses[-1].dataSync())
+        print("gen_f: ", self.generator_f_losses[-1], end=", ")
+        print("gen_g: ", self.generator_g_losses[-1], end=", ")
+        print(
+            "dis_x: ",
+            self.discriminator_x_losses[-1],
+            end=", ",
+        )
+        print("dis_y: ", self.discriminator_y_losses[-1])
 
     def generate_images(self, test_x, test_y, epoch=None, typ="test"):
         """
@@ -353,7 +358,7 @@ class CycleGAN:
         # plot images
         fig = plt.figure(figsize=(12, 12))
 
-        images = [x, y_hat[0], y, x_hat[0]]
+        images = [x, y_hat, y, x_hat]
 
         for i in range(4):
             plt.subplot(2, 2, i + 1)
@@ -413,6 +418,8 @@ class CycleGAN:
             self.generate_images(test_x, test_y, epoch=-1)
         print("training")
 
+        shape = (1, self.width, self.height, self.num_channels)
+
         for epoch in range(epochs):
             print(f"epoch: {epoch} ", end="")
             start = time.time()
@@ -425,7 +432,7 @@ class CycleGAN:
 
             # run the train_step algorithm for each image
             for k, (real_x, real_y) in data:
-                self.train_step(real_x, real_y)
+                self.train_step(tf.reshape(real_x, shape), tf.reshape(real_y, shape))
 
                 # visual feedback
                 percent_done = int(k / num_samples * 100)
@@ -436,7 +443,7 @@ class CycleGAN:
             print(f" time taken: {time.time() - start}s")
 
             self.aggregate_losses(num_samples)
-            self.print_losses()
+            # self.print_losses()
 
             self.generate_images(train_x, train_y, typ="train", epoch=epoch)
 
@@ -451,14 +458,10 @@ class CycleGAN:
         if self.save_models:
             self.save_current_models()
 
-    def fit(
-        self, train_x, train_y, test_x=None, test_y=None, epochs=2, checkpoints=True
-    ):
+    def fit(self, train_x, train_y, epochs=2, checkpoints=True):
         self.train(
             tf.data.Dataset.from_tensor_slices(train_x),
             tf.data.Dataset.from_tensor_slices(train_y),
-            test_x=tf.data.Dataset.from_tensor_slices(test_x),
-            test_y=tf.data.Dataset.from_tensor_slices(test_x),
             epochs=epochs,
             checkpoints=True,
         )
@@ -560,7 +563,9 @@ def find_optimal_params(
     print("running grid search CV")
     clf = GridSearchCV(cycle_gan, GRID_PARAMETERS, cv=3)
     grid_result = clf.fit(grid_X, grid_y)
-    print(f"Best Params: {grid_result.best_params_}")
+    print(
+        f"Best score {grid_result.best_score_} with params {grid_result.best_params_}"
+    )
     return grid_result.best_params_
 
 

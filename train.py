@@ -35,24 +35,15 @@ test_y = preprocess_images(test_y)
 
 # build & train the model
 print("finding optimal cycle gan")
-# cyc_gan = find_optimal_cycle_gan(
-#     train_x,
-#     train_y,
-#     test_x,
-#     test_y,
-#     checkpoints=True,
-#     use_cloud=True,
-#     cloud_bucket=GCP_BUCKET,
-# )
-cyc_gan = CycleGAN(
-    show_images=False,
+cyc_gan = find_optimal_cycle_gan(
+    train_x,
+    train_y,
+    test_x,
+    test_y,
+    checkpoints=True,
     use_cloud=True,
-    save_images=True,
-    save_models=True,
-    name="vangogh2photo",
     cloud_bucket=GCP_BUCKET,
 )
-cyc_gan.train(train_x, train_y, test_x, test_y, checkpoints=True)
 
 # print results
 # cyc_gan.print_losses()
