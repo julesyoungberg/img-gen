@@ -387,17 +387,11 @@ def optimizer(learning_rate=2e-4):
     return Adam(learning_rate=learning_rate, beta_1=0.5)
 
 
-def aggregate_losses(losses, n):
+def aggregate_losses(losses):
     """
     Aggregate the last n losses by summing.
     """
     print("losses:", losses)
-    aggregated = losses[: len(losses) - n]
-    # print("aggregated:", aggregated)
-    new_losses = losses[len(losses) - n :]
-    print("new losses:", new_losses)
-    sm = tf.add_n(new_losses)
+    sm = tf.math.reduce_sum(losses)
     print("sum: ", sm)
-    aggregated.append(sm)
-    print("new aggregated:", aggregated)
-    return aggregated
+    return sm

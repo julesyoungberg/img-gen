@@ -108,6 +108,10 @@ class CycleGAN(BaseEstimator):
         self.generator_f_losses = []
         self.discriminator_y_losses = []
         self.discriminator_x_losses = []
+        self.generator_g_epoch_losses = []
+        self.generator_f_epoch_losses = []
+        self.discriminator_y_epoch_losses = []
+        self.discriminator_x_epoch_losses = []
 
         if self.gen_type == "resnet":
             # generator G maps from image set X to Y
@@ -316,16 +320,29 @@ class CycleGAN(BaseEstimator):
         )
 
         # 5. save current losses
-        self.generator_g_losses.append(tf.keras.backend.eval(gen_g_loss))
-        self.generator_f_losses.append(tf.keras.backend.eval(gen_f_loss))
-        self.discriminator_x_losses.append(tf.keras.backend.eval(dis_x_loss))
-        self.discriminator_y_losses.append(tf.keras.backend.eval(dis_y_loss))
+        self.generator_g_epoch_losses.append(gen_g_loss)
+        self.generator_f_epoch_losses.append(gen_f_loss)
+        self.discriminator_x_epoch_losses.append(dis_x_loss)
+        self.discriminator_y_epoch_losses.append(dis_y_loss)
 
+    @tf.function
     def aggregate_losses(self, n):
-        self.generator_g_losses = aggregate_losses(self.generator_g_losses, n)
-        self.generator_f_losses = aggregate_losses(self.generator_f_losses, n)
-        self.discriminator_x_losses = aggregate_losses(self.discriminator_x_losses, n)
-        self.discriminator_y_losses = aggregate_losses(self.discriminator_y_losses, n)
+        self.generator_g_losses = self.generator_g_losses.append(
+            aggregate_losses(self.generator_g_epoch_losses)
+        )
+        self.generator_f_losses = self.generator_f_losses.append(
+            aggregate_losses(self.generator_f_epoch_losses)
+        )
+        self.discriminator_x_losses = self.discriminator_x_losses.append(
+            aggregate_losses(self.discriminator_x_epoch_losses)
+        )
+        self.discriminator_y_losses = self.discriminator_y_losses.append(
+            aggregate_losses(self.discriminator_y_epoch_losses)
+        )
+        self.generator_g_epoch_losses = []
+        self.generator_f_epoch_losses = []
+        self.discriminator_x_epoch_losses = []
+        self.discriminator_y_epoch_losses = []
 
     def print_losses(self):
         print("gen_f: ", self.generator_f_losses[-1], end=", ")
