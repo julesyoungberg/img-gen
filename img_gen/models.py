@@ -392,6 +392,9 @@ def aggregate_losses(losses, n):
     Aggregate the last n losses by averaging.
     """
     aggregated = losses[: len(losses) - n]
+    print("aggregated:", aggregated)
     new = tf.math.reduce_mean(tf.convert_to_tensor(losses[len(losses) - n :]))
-    losses.append(new)
-    return losses
+    print("new:", new)
+    aggregated.append(new)
+    print("new aggregated:", aggregated)
+    return aggregated
