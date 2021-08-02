@@ -323,16 +323,12 @@ class CycleGAN(BaseEstimator):
         return gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss
 
     def aggregate_losses(self):
-        self.generator_g_losses = self.generator_g_losses.append(
-            aggregate_losses(self.generator_g_epoch_losses)
-        )
-        self.generator_f_losses = self.generator_f_losses.append(
-            aggregate_losses(self.generator_f_epoch_losses)
-        )
-        self.discriminator_x_losses = self.discriminator_x_losses.append(
+        self.generator_g_losses.append(aggregate_losses(self.generator_g_epoch_losses))
+        self.generator_f_losses.append(aggregate_losses(self.generator_f_epoch_losses))
+        self.discriminator_x_losses.append(
             aggregate_losses(self.discriminator_x_epoch_losses)
         )
-        self.discriminator_y_losses = self.discriminator_y_losses.append(
+        self.discriminator_y_losses.append(
             aggregate_losses(self.discriminator_y_epoch_losses)
         )
         self.generator_g_epoch_losses = []
