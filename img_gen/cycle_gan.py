@@ -606,6 +606,23 @@ class GANTuner(BaseTuner):
     ):
         super().__init__(oracle=oracle, hypermodel=hypermodel, **kwargs)
 
+    # https://github.com/keras-team/keras-tuner/blob/b69f320c8cb4453d6f4d0eb00f3f71a78bda55c5/keras_tuner/engine/tuner.py#L247
+    def on_epoch_end(self, trial, model, epoch, logs=None):
+        """Called at the end of an epoch.
+        Args:
+            trial: A `Trial` instance.
+            model: A Keras `Model`.
+            epoch: The current epoch number.
+            logs: Dict. Metrics for this epoch. This should include
+              the value of the objective for this epoch.
+        """
+        self.save_model(trial.trial_id, model, step=epoch)
+        # Report intermediate metrics to the `Oracle`.
+        status = self.oracle.update_trial(trial.trial_id, metrics=logs, step=epoch)
+        trial.status = status
+        if trial.status == "STOPPED":
+            model.stop_training = True
+
     def run_trial(self, trial, X, y):
         hp = trial.hyperparameters
 
