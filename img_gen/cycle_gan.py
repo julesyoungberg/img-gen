@@ -55,7 +55,7 @@ class CycleGAN(BaseEstimator):
         use_cloud=False,
         cloud_bucket="img-gen-training",
         name="",
-        show_images=True,
+        show_images=False,
         save_images=False,
         save_models=False,
     ):
