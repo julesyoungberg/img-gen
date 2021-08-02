@@ -1,4 +1,3 @@
-import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import (
@@ -397,7 +396,7 @@ def aggregate_losses(losses, n):
     # print("aggregated:", aggregated)
     new_losses = losses[len(losses) - n :]
     print("new losses:", new_losses)
-    sm = tf.add_n(new_losses)
+    sm = sum(new_losses)
     print("sum: ", sm)
     aggregated.append(sm)
     print("new aggregated:", aggregated)

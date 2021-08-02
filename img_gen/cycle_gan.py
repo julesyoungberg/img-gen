@@ -316,10 +316,10 @@ class CycleGAN(BaseEstimator):
         )
 
         # 5. save current losses
-        self.generator_g_losses.append(gen_g_loss)
-        self.generator_f_losses.append(gen_f_loss)
-        self.discriminator_x_losses.append(dis_x_loss)
-        self.discriminator_y_losses.append(dis_y_loss)
+        self.generator_g_losses.append(tf.keras.backend.eval(gen_g_loss))
+        self.generator_f_losses.append(tf.keras.backend.eval(gen_f_loss))
+        self.discriminator_x_losses.append(tf.keras.backend.eval(dis_x_loss))
+        self.discriminator_y_losses.append(tf.keras.backend.eval(dis_y_loss))
 
     def aggregate_losses(self, n):
         self.generator_g_losses = aggregate_losses(self.generator_g_losses, n)
