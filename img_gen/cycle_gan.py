@@ -570,7 +570,7 @@ PARAMETERS = [
 ]
 
 
-def build_model(hp, show_images=False, save_images=False, save_models=False):
+def build_model(hp, **params):
     """Builds an optimizable cycle gan."""
     norm_type = hp.Choice("norm_type", ["batchnorm", "instancenorm"])
     loss_type = hp.Choice("loss_type", ["cross_entropy", "least_squares"])
@@ -582,9 +582,6 @@ def build_model(hp, show_images=False, save_images=False, save_models=False):
     learning_rate = hp.Float("learning_rate", 1e-4, 1e-2, sampling="log", default=1e-3)
 
     cycle_gan = CycleGAN(
-        show_images=show_images,
-        save_images=save_images,
-        save_models=save_models,
         norm_type=norm_type,
         loss_type=loss_type,
         gen_type=gen_type,
@@ -593,6 +590,7 @@ def build_model(hp, show_images=False, save_images=False, save_models=False):
         dis_loss_weight=dis_loss_weight,
         lmbd=lmbd,
         learning_rate=learning_rate,
+        **params,
     )
 
     return cycle_gan
