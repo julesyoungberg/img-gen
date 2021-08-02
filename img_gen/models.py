@@ -392,8 +392,9 @@ def aggregate_losses(losses, n):
     """
     Aggregate the last n losses by averaging.
     """
+    print("losses:", losses)
     aggregated = losses[: len(losses) - n]
-    print("aggregated:", aggregated)
+    # print("aggregated:", aggregated)
     new_losses = np.array(losses[len(losses) - n :])
     print("new losses:", new_losses)
     mean = new_losses.mean()
