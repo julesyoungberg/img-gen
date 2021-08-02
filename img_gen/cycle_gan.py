@@ -1,6 +1,8 @@
 import os
 import time
 
+import keras_tuner as kt
+from keras_tuner.engine.base_tuner import BaseTuner
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.base import BaseEstimator
@@ -386,16 +388,23 @@ class CycleGAN(BaseEstimator):
         if not self.show_images:
             plt.ion()
 
-    def save_current_models(self):
-        save_dir = "./models/"
-
+    def save_current_models(self, save_dir="models"):
         if self.use_cloud:
-            os.path.join("gs://", self.cloud_bucket, self.name, "models")
+            os.path.join("gs://", self.cloud_bucket, self.name, save_dir)
 
         self.generator_g.save(os.path.join(save_dir, "generator_g"))
         self.generator_f.save(os.path.join(save_dir, "generator_f"))
         self.discriminator_x.save(os.path.join(save_dir, "discriminator_x"))
         self.discriminator_y.save(os.path.join(save_dir, "discriminator_y"))
+
+    def load_models(self, save_dir="models"):
+        if self.use_cloud:
+            os.path.join("gs://", self.cloud_bucket, self.name, save_dir)
+
+        self.generator_g.load_weights(os.path.join(save_dir, "generator_g"))
+        self.generator_f.load_weights(os.path.join(save_dir, "generator_f"))
+        self.discriminator_x.load_weights(os.path.join(save_dir, "discriminator_x"))
+        self.discriminator_y.load_weights(os.path.join(save_dir, "discriminator_y"))
 
     def train(
         self,
@@ -404,7 +413,8 @@ class CycleGAN(BaseEstimator):
         test_x=None,
         test_y=None,
         epochs=10,
-        checkpoints=False,
+        checkpoints=True,
+        on_epoch_end=None,
     ):
         """
         Train the networks.
@@ -455,15 +465,27 @@ class CycleGAN(BaseEstimator):
                 ckpt_save_path = ckpt_manager.save()
                 print(f"saving checkpoint at {ckpt_save_path}")
 
+            if on_epoch_end is not None:
+                loss = np.array(
+                    [
+                        self.generator_g_losses[-1],
+                        self.generator_f_losses[-1],
+                        self.discriminator_x_losses[-1],
+                        self.discriminator_y_losses[-1],
+                    ]
+                ).mean()
+                on_epoch_end(epoch, loss)
+
         if self.save_models:
             self.save_current_models()
 
-    def fit(self, train_x, train_y, epochs=2, checkpoints=True):
+    def fit(self, train_x, train_y, epochs=2, checkpoints=True, on_epoch_end=None):
         self.train(
-            tf.data.Dataset.from_tensor_slices(train_x),
-            tf.data.Dataset.from_tensor_slices(train_y),
+            train_x,
+            train_y,
             epochs=epochs,
-            checkpoints=True,
+            checkpoints=checkpoints,
+            on_epoch_end=on_epoch_end,
         )
 
     def plot_losses(self):
@@ -530,69 +552,98 @@ class CycleGAN(BaseEstimator):
         return np.array([gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss]).mean()
 
 
-def to_numpy(data):
-    return np.array([d[0] for d in data])
+def build_model(hp):
+    """Builds an optimizable cycle gan."""
+    norm_type = hp.Choice("norm_type", ["batchnorm", "instancenorm"])
+    loss_type = hp.Choice("loss_type", ["cross_entropy", "least_squares"])
+    gen_type = hp.Choice("gen_type", ["unet", "resnet"])
+    use_identity = hp.Choice("use_identity", [False, True])
+    gen_apply_dropout = hp.Choice("gen_apply_dropout", [False, True])
+    dis_loss_weight = hp.Float("dis_loss_weight", 0.5, 1.0, default=1.0)
+    lmbd = hp.Int("lmbd", 1, 10, default=10)
+    learning_rate = hp.Float("learning_rate", 1e-4, 1e-2, sampling="log", default=1e-3)
 
-
-def find_optimal_params(
-    train_x_, train_y_, test_x_, test_y_, epochs=40, checkpoints=True, **params
-):
-    train_x = to_numpy(train_x_)
-    train_y = to_numpy(train_y_)
-    test_x = to_numpy(test_x_)
-    test_y = to_numpy(test_y_)
-    # balance the datasets for the grid search
-    grid_X = train_x
-    grid_y = train_y
-
-    if len(grid_X) < len(grid_y):
-        grid_y = grid_y[0 : len(grid_X), :]
-
-    if len(grid_y) < len(grid_X):
-        grid_X = grid_X[0 : len(grid_y), :]
-
-    # build base model
     cycle_gan = CycleGAN(
-        **params,
         show_images=False,
         save_images=False,
         save_models=False,
+        norm_type=norm_type,
+        loss_type=loss_type,
+        gen_type=gen_type,
+        use_identity=use_identity,
+        gen_apply_dropout=gen_apply_dropout,
+        dis_loss_weight=dis_loss_weight,
+        lmbd=lmbd,
+        learning_rate=learning_rate,
     )
 
-    # find best paramns
-    print("running grid search CV")
-    clf = GridSearchCV(cycle_gan, GRID_PARAMETERS, cv=3)
-    grid_result = clf.fit(grid_X, grid_y)
-    print(
-        f"Best score {grid_result.best_score_} with params {grid_result.best_params_}"
-    )
-    return grid_result.best_params_
+    return cycle_gan
+
+
+class GANTuner(BaseTuner):
+    def __init__(
+        self,
+        oracle,
+        hypermodel,
+        **kwargs,
+    ):
+        super().__init__(oracle=oracle, hypermodel=hypermodel, **kwargs)
+
+    def run_trial(self, trial, X, y):
+        hp = trial.hyperparameters
+
+        model = self.hypermodel.build(trial.hyperparameters)
+        # model = build_model(trial.hyperparameters)
+
+        def on_epoch_end(epoch, loss):
+            self.on_epoch_end(trial, model, epoch, logs={"loss": loss})
+
+        model.fit(X, y, on_epoch_end=on_epoch_end)
+
+    def save_model(self, trial_id, model, step=0):
+        model.save_current_models(self.get_trial_dir(trial_id))
+
+    def load_model(self, trial):
+        model = self.hypermodelo.build(trial.hyperparameters)
+        model.load_models(self.get_trial_dir(trial.trial_id))
 
 
 def find_optimal_cycle_gan(
-    train_x, train_y, test_x, test_y, epochs=40, checkpoints=True, **params
+    train_x,
+    train_y,
+    test_x,
+    test_y,
+    epochs=40,
+    checkpoints=True,
+    directory="optimization_results",
+    project_name="cycle_gan",
+    **params,
 ):
-    best_params = find_optimal_params(
-        train_x,
-        train_y,
-        test_x,
-        test_y,
-        epochs=epochs,
-        checkpoints=checkpoints,
-        **params,
+    tuner = GANTuner(
+        oracle=kt.oracles.BayesianOptimization(
+            objective=kt.Objective("loss", "min"), max_trials=2
+        ),
+        hypermodel=build_model,
+        directory=directory,
+        project_name=project_name,
     )
+
+    tuner.search(train_x, train_y)
+
+    best_params = tuner.get_best_hyperparameters()[0]
+    print("optimal hyper parameters: ", best_params)
 
     # build and train optimal model
     cycle_gan = CycleGAN(
-        **params,
-        **best_params,
         show_images=False,
         save_images=True,
         save_models=True,
+        **params,
+        **best_params,
     )
 
     cycle_gan.train(
-        train_x, train_y, test_x, test_y, epochs=40, checkpoints=checkpoints
+        train_x, train_y, test_x, test_y, epochs=epochs, checkpoints=checkpoints
     )
 
     return cycle_gan

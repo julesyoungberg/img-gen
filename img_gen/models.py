@@ -389,9 +389,9 @@ def optimizer(learning_rate=2e-4):
 
 def aggregate_losses(losses, n):
     """
-    Aggregate the last n losses. Basic implementation takes last value.
+    Aggregate the last n losses by averaging.
     """
-    last_loss = losses[-1]
-    losses = losses[: len(losses) - n]
-    losses.append(last_loss)
+    aggregated = losses[: len(losses) - n]
+    new = losses[len(losses) - n :]
+    losses.append(new.mean())
     return losses
