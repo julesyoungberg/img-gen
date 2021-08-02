@@ -326,7 +326,7 @@ class CycleGAN(BaseEstimator):
         self.discriminator_y_epoch_losses.append(dis_y_loss)
 
     @tf.function
-    def aggregate_losses(self, n):
+    def aggregate_losses(self):
         self.generator_g_losses = self.generator_g_losses.append(
             aggregate_losses(self.generator_g_epoch_losses)
         )
@@ -469,7 +469,7 @@ class CycleGAN(BaseEstimator):
 
             print(f" time taken: {time.time() - start}s")
 
-            self.aggregate_losses(num_samples)
+            self.aggregate_losses()
             # self.print_losses()
 
             self.generate_images(train_x, train_y, typ="train", epoch=epoch)
