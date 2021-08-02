@@ -437,6 +437,7 @@ class CycleGAN(BaseEstimator):
         Train the networks.
         """
         # tf.config.run_functions_eagerly(True)
+        tf.compat.v1.disable_eager_execution()
 
         if checkpoints:
             ckpt_manager = self.initialize_checkpoint_manager()
