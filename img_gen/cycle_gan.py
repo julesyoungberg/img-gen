@@ -320,12 +320,8 @@ class CycleGAN(BaseEstimator):
         )
 
         # 5. save current losses
-        self.generator_g_epoch_losses.append(gen_g_loss)
-        self.generator_f_epoch_losses.append(gen_f_loss)
-        self.discriminator_x_epoch_losses.append(dis_x_loss)
-        self.discriminator_y_epoch_losses.append(dis_y_loss)
+        return gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss
 
-    @tf.function
     def aggregate_losses(self):
         self.generator_g_losses = self.generator_g_losses.append(
             aggregate_losses(self.generator_g_epoch_losses)
@@ -437,7 +433,7 @@ class CycleGAN(BaseEstimator):
         Train the networks.
         """
         # tf.config.run_functions_eagerly(True)
-        tf.compat.v1.disable_eager_execution()
+        # tf.compat.v1.disable_eager_execution()
 
         if checkpoints:
             ckpt_manager = self.initialize_checkpoint_manager()
@@ -460,7 +456,14 @@ class CycleGAN(BaseEstimator):
 
             # run the train_step algorithm for each image
             for k, (real_x, real_y) in data:
-                self.train_step(tf.reshape(real_x, shape), tf.reshape(real_y, shape))
+                gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss = self.train_step(
+                    tf.reshape(real_x, shape), tf.reshape(real_y, shape)
+                )
+
+                self.generator_g_epoch_losses.append(gen_g_loss)
+                self.generator_f_epoch_losses.append(gen_f_loss)
+                self.discriminator_x_epoch_losses.append(dis_x_loss)
+                self.discriminator_y_epoch_losses.append(dis_y_loss)
 
                 # visual feedback
                 percent_done = int(k / num_samples * 100)

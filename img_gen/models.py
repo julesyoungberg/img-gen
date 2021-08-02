@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import (
@@ -387,11 +388,10 @@ def optimizer(learning_rate=2e-4):
     return Adam(learning_rate=learning_rate, beta_1=0.5)
 
 
-def aggregate_losses(losses):
-    """
-    Aggregate the last n losses by summing.
-    """
+def aggregate_losses(l):
+    print("aggregate losses:", l)
+    losses = np.array(l)
     print("losses:", losses)
-    sm = tf.math.reduce_sum(losses)
+    sm = losses.sum()
     print("sum: ", sm)
     return sm
