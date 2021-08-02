@@ -569,7 +569,7 @@ class CycleGAN(BaseEstimator):
         return np.array([gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss]).mean()
 
 
-def build_model(hp):
+def build_model(hp, show_images=False, save_images=False, save_models=False):
     """Builds an optimizable cycle gan."""
     norm_type = hp.Choice("norm_type", ["batchnorm", "instancenorm"])
     loss_type = hp.Choice("loss_type", ["cross_entropy", "least_squares"])
@@ -581,9 +581,9 @@ def build_model(hp):
     learning_rate = hp.Float("learning_rate", 1e-4, 1e-2, sampling="log", default=1e-3)
 
     cycle_gan = CycleGAN(
-        show_images=False,
-        save_images=False,
-        save_models=False,
+        show_images=show_images,
+        save_images=save_images,
+        save_models=save_models,
         norm_type=norm_type,
         loss_type=loss_type,
         gen_type=gen_type,
@@ -668,12 +668,12 @@ def find_optimal_cycle_gan(
     print("optimal hyper parameters: ", best_params)
 
     # build and train optimal model
-    cycle_gan = CycleGAN(
+    cycle_gan = build_model(
+        best_params,
         show_images=False,
         save_images=True,
         save_models=True,
         **params,
-        **best_params,
     )
 
     cycle_gan.train(
