@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import (
@@ -392,9 +393,11 @@ def aggregate_losses(losses, n):
     Aggregate the last n losses by averaging.
     """
     aggregated = losses[: len(losses) - n]
-    tf.print("aggregated:", aggregated)
-    new = tf.math.reduce_mean(tf.convert_to_tensor(losses[len(losses) - n :]))
-    tf.print("new:", new)
-    aggregated.append(new)
-    tf.print("new aggregated:", aggregated)
+    print("aggregated:", aggregated)
+    new_losses = np.array(losses[len(losses) - n :])
+    print("new losses:", new_losses)
+    mean = new_losses.mean()
+    print("mean: ", mean)
+    aggregated.append(mean)
+    print("new aggregated:", aggregated)
     return aggregated
