@@ -390,15 +390,15 @@ def optimizer(learning_rate=2e-4):
 
 def aggregate_losses(losses, n):
     """
-    Aggregate the last n losses by averaging.
+    Aggregate the last n losses by summing.
     """
     print("losses:", losses)
     aggregated = losses[: len(losses) - n]
     # print("aggregated:", aggregated)
-    new_losses = np.array([tf.keras.backend.eval(l) for l in losses[len(losses) - n :]])
+    new_losses = losses[len(losses) - n :]
     print("new losses:", new_losses)
-    mean = new_losses.mean()
-    print("mean: ", mean)
-    aggregated.append(mean)
+    sm = tf.add_n(new_losses)
+    print("sum: ", sm)
+    aggregated.append(sm)
     print("new aggregated:", aggregated)
     return aggregated
