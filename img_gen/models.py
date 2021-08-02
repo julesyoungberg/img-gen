@@ -1,3 +1,9 @@
+"""
+Helper functions for creating and working with tensorflow models needed for constructing GANs.
+This code is a large mix of pieces from various tutorials, that are all referenced, along with
+the tutorial's results in ../notebooks/tutorials.
+"""
+
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Sequential
@@ -70,8 +76,7 @@ def upsample(
     size=(3, 3),
     strides=2,
     norm_type=None,
-    apply_dropout=False,
-    dropout=0.5,
+    dropout=0.0,
     activation="relu",
 ):
     """
@@ -97,7 +102,7 @@ def upsample(
     elif norm_type == "instancenorm":
         model.add(InstanceNormalization(axis=-1))
 
-    if apply_dropout:
+    if dropout > 0:
         model.add(Dropout(dropout))
 
     if activation == "relu":
@@ -108,21 +113,21 @@ def upsample(
     return model
 
 
-def residual_block(inpt, filters=256, size=(3, 3), norm_type="instancenorm"):
+def residual_block(inpt, filters=256, conv_size=(3, 3), norm_type="instancenorm"):
     """
     Creates a residual block for downsampling an image.
     """
     initializer = tf.random_normal_initializer(0.0, 0.02)
 
     # layer 1
-    r = Conv2D(filters, size, padding="same", kernel_initializer=initializer)(inpt)
+    r = Conv2D(filters, conv_size, padding="same", kernel_initializer=initializer)(inpt)
     if norm_type == "batchnorm":
         r = BatchNormalization()(r)
     elif norm_type == "instancenorm":
         r = InstanceNormalization(axis=-1)(r)
 
     # layer 2
-    r = Conv2D(filters, size, padding="same", kernel_initializer=initializer)(inpt)
+    r = Conv2D(filters, conv_size, padding="same", kernel_initializer=initializer)(inpt)
     if norm_type == "batchnorm":
         r = BatchNormalization()(r)
     elif norm_type == "instancenorm":
@@ -155,14 +160,12 @@ def img_generator(num_channels=3, conv_size=(3, 3), norm_type=None, dropout=0.5)
             512,
             size=conv_size,
             norm_type=norm_type,
-            apply_dropout=True,
             dropout=dropout,
         ),  # (bs, 4, 4, 1024)
         upsample(
             512,
             size=conv_size,
             norm_type=norm_type,
-            apply_dropout=True,
             dropout=dropout,
         ),  # (bs, 8, 8, 1024)
         upsample(512, size=conv_size, norm_type=norm_type),  # (bs, 16, 16, 1024)
@@ -186,11 +189,10 @@ def unet_generator(
     image_shape=(256, 256, 3),
     conv_size=(3, 3),
     norm_type="instancenorm",
-    apply_dropout=True,
-    dropout=0.5,
+    dropout=0.0,
 ):
     """
-    Modified u-net generator model (https://arxiv.org/abs/1611.07004).
+    U-net generator model.
     """
     gen_input = Input(shape=image_shape)
 
@@ -210,21 +212,18 @@ def unet_generator(
             512,
             size=conv_size,
             norm_type=norm_type,
-            apply_dropout=apply_dropout,
             dropout=dropout,
         ),  # (bs, 2, 2, 1024)
         upsample(
             512,
             size=conv_size,
             norm_type=norm_type,
-            apply_dropout=apply_dropout,
             dropout=dropout,
         ),  # (bs, 4, 4, 1024)
         upsample(
             512,
             size=conv_size,
             norm_type=norm_type,
-            apply_dropout=apply_dropout,
             dropout=dropout,
         ),  # (bs, 8, 8, 1024)
         upsample(512, size=conv_size, norm_type=norm_type),  # (bs, 16, 16, 1024)
@@ -259,7 +258,11 @@ def unet_generator(
 
 
 def resnet_generator(
-    image_shape=(256, 256, 3), num_res_blocks=9, norm_type="instancenorm"
+    image_shape=(256, 256, 3),
+    conv_size=(3, 3),
+    num_res_blocks=9,
+    norm_type="instancenorm",
+    dropout=0.0,
 ):
     """
     Modifier Res-Net (https://arxiv.org/abs/1611.07004).
@@ -277,19 +280,29 @@ def resnet_generator(
         norm_type=norm_type,
     )(inpt)
     # d128
-    g = downsample(128, (3, 3), norm_type=norm_type)(g)
+    g = downsample(128, conv_size=conv_size, norm_type=norm_type)(g)
     # d256
-    g = downsample(256, (3, 3), norm_type=norm_type)(g)
+    g = downsample(256, conv_size=conv_size, norm_type=norm_type)(g)
     # R256
     for _ in range(num_res_blocks):
-        g = residual_block(g, filters=256, norm_type=norm_type)
+        g = residual_block(g, filters=256, conv_size=conv_size, norm_type=norm_type)
 
     ## Decoder layers
     ##
     # u128
-    g = upsample(128, (3, 3), norm_type=norm_type)(g)
+    g = upsample(
+        128,
+        conv_size=conv_size,
+        norm_type=norm_type,
+        dropout=dropout,
+    )(g)
     # u64
-    g = upsample(64, (3, 3), norm_type=norm_type)(g)
+    g = upsample(
+        64,
+        conv_size=conv_size,
+        norm_type=norm_type,
+        dropout=dropout,
+    )(g)
     # c7s1-3
     g = downsample(
         image_shape[2], (7, 7), strides=(1, 1), norm_type=norm_type, activation="tanh"
@@ -307,7 +320,7 @@ def discriminator(
     alpha=0.2,
 ):
     """
-    Modified PatchGan discriminator model (https://arxiv.org/abs/1611.07004).
+    PatchGan discriminator model.
     """
     inpt = Input(shape=image_shape)
 

@@ -1,3 +1,7 @@
+"""
+Code for building and optimizing CycleGANs.
+"""
+
 import os
 import time
 
@@ -5,8 +9,6 @@ import keras_tuner as kt
 from keras_tuner.engine.base_tuner import BaseTuner
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.base import BaseEstimator
-from sklearn.model_selection import GridSearchCV
 import tensorflow as tf
 
 from img_gen.img import image_diff
@@ -22,7 +24,7 @@ from img_gen.models import (
 from img_gen.storage import save_figure
 
 
-class CycleGAN(BaseEstimator):
+class CycleGAN:
     """
     The Cycle GAN architecture for image-to-image translation.
     """
@@ -37,8 +39,8 @@ class CycleGAN(BaseEstimator):
         loss_type="cross_entropy",  # cross_entropy | least_squares
         gen_type="unet",  # unet | resnet
         use_identity=True,
-        gen_dropout=0.5,
-        gen_apply_dropout=False,
+        gen_dropout=0.0,
+        gen_conv_size=(3, 3),
         dis_loss_weight=0.5,
         dis_alpha=0.2,
         lmbd=10,
@@ -58,7 +60,7 @@ class CycleGAN(BaseEstimator):
         self.gen_type = gen_type
         self.use_identity = use_identity
         self.gen_dropout = gen_dropout
-        self.gen_apply_dropout = gen_apply_dropout
+        self.gen_conv_size = gen_conv_size
         self.dis_loss_weight = dis_loss_weight
         self.dis_alpha = dis_alpha
         self.lmbd = lmbd
@@ -81,7 +83,8 @@ class CycleGAN(BaseEstimator):
             + "__gen_dropout="
             + str(self.gen_dropout)
         )
-        self.name += "__gen_apply_dropout=" + str(self.gen_apply_dropout)
+        self.name += "__gen_dropout=" + str(self.gen_dropout)
+        self.name += "__gen_conv_size=" + str(self.gen_conv_size)
         self.name += "__dis_loss_weight=" + str(self.dis_loss_weight)
         self.name += "__dis_alpha=" + str(self.dis_alpha) + "__lmbd=" + str(self.lmbd)
 
@@ -107,26 +110,30 @@ class CycleGAN(BaseEstimator):
             # generator G maps from image set X to Y
             self.generator_g = resnet_generator(
                 image_shape=image_shape,
+                conv_size=self.gen_conv_size,
                 norm_type=self.norm_type,
+                dropout=self.gen_dropout,
             )
             # generator F maps from image set Y to X
             self.generator_f = resnet_generator(
                 image_shape=image_shape,
+                conv_size=self.gen_conv_size,
                 norm_type=self.norm_type,
+                dropout=self.gen_dropout,
             )
         elif self.gen_type == "unet":
             # generator G maps from image set X to Y
             self.generator_g = unet_generator(
                 image_shape=image_shape,
+                conv_size=self.gen_conv_size,
                 norm_type=self.norm_type,
-                apply_dropout=self.gen_apply_dropout,
                 dropout=self.gen_dropout,
             )
             # generator F maps from image set Y to X
             self.generator_f = unet_generator(
                 image_shape=image_shape,
+                conv_size=self.gen_conv_size,
                 norm_type=self.norm_type,
-                apply_dropout=self.gen_apply_dropout,
                 dropout=self.gen_dropout,
             )
         else:
@@ -148,53 +155,6 @@ class CycleGAN(BaseEstimator):
             loss_weight=self.dis_loss_weight,
             alpha=self.dis_alpha,
         )
-
-    def get_params(self, deep=False):
-        return {
-            "norm_type": self.norm_type,
-            "learning_rate": self.learning_rate,
-            "loss_type": self.loss_type,
-            "gen_type": self.gen_type,
-            "use_identity": self.use_identity,
-            "gen_dropout": self.gen_dropout,
-            "gen_apply_dropout": self.gen_apply_dropout,
-            "dis_loss_weight": self.dis_loss_weight,
-            "dis_alpha": self.dis_alpha,
-            "lmbd": self.lmbd,
-        }
-
-    def set_params(self, **params):
-        if "norm_type" in params:
-            self.norm_type = params["norm_type"]
-
-        if "learning_rate" in params:
-            self.learning_rate = params["learning_rate"]
-
-        if "loss_type" in params:
-            self.loss_type = params["loss_type"]
-
-        if "gen_type" in params:
-            self.gen_type = params["gen_type"]
-
-        if "use_identity" in params:
-            self.use_identity = params["use_identity"]
-
-        if "gen_dropout" in params:
-            self.gen_dropout = params["gen_dropout"]
-
-        if "gen_apply_dropout" in params:
-            self.gen_apply_dropout = params["gen_apply_dropout"]
-
-        if "dis_loss_weight" in params:
-            self.dis_loss_weight = params["dis_loss_weight"]
-
-        if "dis_alpha" in params:
-            self.dis_alpha = params["dis_alpha"]
-
-        if "lmbd" in params:
-            self.lmbd = params["lmbd"]
-
-        return self
 
     def initialize_checkpoint_manager(self):
         """
@@ -564,9 +524,11 @@ PARAMETERS = [
     "loss_type",
     "gen_type",
     "use_identity",
-    "gen_apply_dropout",
+    "gen_dropout",
+    "gen_conv_size",
     "dis_loss_weight",
     "lmbd",
+    "dis_alpha",
 ]
 
 
@@ -576,20 +538,24 @@ def build_model(hp, **params):
     loss_type = hp.Choice("loss_type", ["cross_entropy", "least_squares"])
     gen_type = hp.Choice("gen_type", ["unet", "resnet"])
     use_identity = hp.Choice("use_identity", [False, True])
-    gen_apply_dropout = hp.Choice("gen_apply_dropout", [False, True])
+    gen_dropout = hp.Float("gen_dropout", 0.0, 0.6, default=0.0)
+    gen_conv_size = hp.Choice("gen_conv_size", [(3, 3), (4, 4)], default=(3, 3))
     dis_loss_weight = hp.Float("dis_loss_weight", 0.5, 1.0, default=1.0)
     lmbd = hp.Int("lmbd", 1, 10, default=10)
     learning_rate = hp.Float("learning_rate", 1e-4, 1e-2, sampling="log", default=1e-3)
+    dis_alpha = hp.Float("dis_alpha", 0.1, 0.8, default=0.2)
 
     cycle_gan = CycleGAN(
         norm_type=norm_type,
         loss_type=loss_type,
         gen_type=gen_type,
         use_identity=use_identity,
-        gen_apply_dropout=gen_apply_dropout,
+        gen_dropout=gen_dropout,
+        gen_conv_size=gen_conv_size,
         dis_loss_weight=dis_loss_weight,
         lmbd=lmbd,
         learning_rate=learning_rate,
+        dis_alpha=dis_alpha,
         **params,
     )
 
