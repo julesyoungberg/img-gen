@@ -395,7 +395,7 @@ def aggregate_losses(losses, n):
     print("losses:", losses)
     aggregated = losses[: len(losses) - n]
     # print("aggregated:", aggregated)
-    new_losses = np.array([l.eval() for l in losses[len(losses) - n :]])
+    new_losses = np.array([tf.keras.backend.eval(l) for l in losses[len(losses) - n :]])
     print("new losses:", new_losses)
     mean = new_losses.mean()
     print("mean: ", mean)
