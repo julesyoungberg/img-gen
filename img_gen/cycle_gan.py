@@ -21,16 +21,6 @@ from img_gen.models import (
 )
 from img_gen.storage import save_figure
 
-GRID_PARAMETERS = {
-    "norm_type": ("batchnorm", "instancenorm"),
-    "loss_type": ("cross_entropy", "least_squares"),
-    "gen_type": ("unet", "resnet"),
-    "use_identity": (False, True),
-    "gen_apply_dropout": (False, True),
-    "dis_loss_weight": (0.5, 0.75, 1.0),
-    "lmbd": (1, 5, 10),
-}
-
 
 class CycleGAN(BaseEstimator):
     """
@@ -569,6 +559,17 @@ class CycleGAN(BaseEstimator):
         return np.array([gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss]).mean()
 
 
+PARAMETERS = [
+    "norm_type",
+    "loss_type",
+    "gen_type",
+    "use_identity",
+    "gen_apply_dropout",
+    "dis_loss_weight",
+    "lmbd",
+]
+
+
 def build_model(hp, show_images=False, save_images=False, save_models=False):
     """Builds an optimizable cycle gan."""
     norm_type = hp.Choice("norm_type", ["batchnorm", "instancenorm"])
@@ -665,7 +666,9 @@ def find_optimal_cycle_gan(
     tuner.search(train_x, train_y)
 
     best_params = tuner.get_best_hyperparameters()[0]
-    print("optimal hyper parameters: ", best_params)
+    print("optimal hyper parameters:")
+    for param in PARAMETERS:
+        print(f"    - {param}: {best_params.get(param)}")
 
     # build and train optimal model
     cycle_gan = build_model(
