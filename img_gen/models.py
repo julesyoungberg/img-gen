@@ -402,4 +402,4 @@ def optimizer(learning_rate=2e-4):
 
 
 def aggregate_losses(losses):
-    return np.array(losses).sum()
+    return np.array(losses).mean()
