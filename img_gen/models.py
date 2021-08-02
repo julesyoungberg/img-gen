@@ -388,10 +388,5 @@ def optimizer(learning_rate=2e-4):
     return Adam(learning_rate=learning_rate, beta_1=0.5)
 
 
-def aggregate_losses(l):
-    print("aggregate losses:", l)
-    losses = np.array(l)
-    print("losses:", losses)
-    sm = losses.sum()
-    print("sum: ", sm)
-    return sm
+def aggregate_losses(losses):
+    return np.array(losses).sum()
