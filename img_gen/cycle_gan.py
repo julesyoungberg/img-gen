@@ -160,11 +160,11 @@ class CycleGAN:
         """
         Initialize checkpoints and restore if possible.
         """
-        checkpoint_path = "./checkpoints/train"
+        checkpoint_path = "./checkpoints/"
 
         if self.use_cloud:
             checkpoint_path = os.path.join(
-                "gs://", self.cloud_bucket, self.name, "save_at_{epoch}"
+                "gs://", self.cloud_bucket, self.name, "checkpoints"
             )
 
         ckpt = tf.train.Checkpoint(
@@ -540,12 +540,12 @@ def build_model(hp, **params):
     loss_type = hp.Choice("loss_type", ["cross_entropy", "least_squares"])
     gen_type = hp.Choice("gen_type", ["unet", "resnet"])
     use_identity = hp.Choice("use_identity", [False, True])
-    gen_dropout = hp.Float("gen_dropout", 0.0, 0.6, default=0.0)
+    gen_dropout = hp.Float("gen_dropout", 0.0, 0.5, default=0.0)
     gen_conv_size = hp.Choice("gen_conv_size", [(3, 3), (4, 4)], default=(3, 3))
     dis_loss_weight = hp.Float("dis_loss_weight", 0.5, 1.0, default=1.0)
-    lmbd = hp.Int("lmbd", 1, 10, default=10)
+    lmbd = hp.Int("lmbd", 1, 15, default=10)
     learning_rate = hp.Float("learning_rate", 1e-4, 1e-2, sampling="log", default=1e-3)
-    dis_alpha = hp.Float("dis_alpha", 0.1, 0.8, default=0.2)
+    dis_alpha = hp.Float("dis_alpha", 0.1, 0.7, default=0.2)
 
     cycle_gan = CycleGAN(
         norm_type=norm_type,
