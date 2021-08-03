@@ -449,7 +449,7 @@ class CycleGAN:
         if self.save_models:
             self.save_current_models()
 
-    def fit(self, train_x, train_y, epochs=2, checkpoints=True, on_epoch_end=None):
+    def fit(self, train_x, train_y, epochs=5, checkpoints=True, on_epoch_end=None):
         self.train(
             train_x,
             train_y,
@@ -541,7 +541,7 @@ def build_model(hp, **params):
     gen_type = hp.Choice("gen_type", ["unet", "resnet"])
     use_identity = hp.Choice("use_identity", [False, True])
     gen_dropout = hp.Float("gen_dropout", 0.0, 0.5, default=0.0)
-    gen_conv_size = hp.Choice("gen_conv_size", [(3, 3), (4, 4)], default=(3, 3))
+    gen_conv_size = hp.Choice("gen_conv_size", [3, 4], default=3)
     dis_loss_weight = hp.Float("dis_loss_weight", 0.5, 1.0, default=1.0)
     # lmbd = hp.Int("lmbd", 1, 15, default=10)
     learning_rate = hp.Float("learning_rate", 1e-4, 1e-2, sampling="log", default=1e-3)
