@@ -398,7 +398,15 @@ class CycleGAN:
             percent_done = 0
             prev_done = 0
 
-            zipped = tf.data.Dataset.zip((train_x, train_y))
+            y = train_y
+            if len(train_x) < len(train_y):
+                y = train_y.shuffle().take(len(train_x))
+
+            x = train_x
+            if len(train_y) < len(train_x):
+                x = train_x.shuffle().take(len(train_y))
+
+            zipped = tf.data.Dataset.zip((x, y))
             data = enumerate(zipped)
             print("data len: ", len(zipped))
 
