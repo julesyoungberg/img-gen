@@ -280,26 +280,26 @@ def resnet_generator(
         norm_type=norm_type,
     )(inpt)
     # d128
-    g = downsample(128, conv_size=conv_size, norm_type=norm_type)(g)
+    g = downsample(128, size=conv_size, norm_type=norm_type)(g)
     # d256
-    g = downsample(256, conv_size=conv_size, norm_type=norm_type)(g)
+    g = downsample(256, size=conv_size, norm_type=norm_type)(g)
     # R256
     for _ in range(num_res_blocks):
-        g = residual_block(g, filters=256, conv_size=conv_size, norm_type=norm_type)
+        g = residual_block(g, filters=256, size=conv_size, norm_type=norm_type)
 
     ## Decoder layers
     ##
     # u128
     g = upsample(
         128,
-        conv_size=conv_size,
+        size=conv_size,
         norm_type=norm_type,
         dropout=dropout,
     )(g)
     # u64
     g = upsample(
         64,
-        conv_size=conv_size,
+        size=conv_size,
         norm_type=norm_type,
         dropout=dropout,
     )(g)
@@ -337,7 +337,9 @@ def discriminator(
         d
     )  # (bs, 16, 16, 512)
 
-    d = downsample(1, conv_size, strides=(1, 1), activation=None)(d)  # (bs, 30, 30, 1)
+    d = downsample(1, size=conv_size, strides=(1, 1), activation=None)(
+        d
+    )  # (bs, 30, 30, 1)
 
     model = Model(inpt, d)
     model.compile(loss="mse", optimizer=opt, loss_weights=[loss_weight])
