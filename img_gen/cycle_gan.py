@@ -328,9 +328,6 @@ class CycleGAN:
 
         plt.tight_layout()
 
-        if self.show_images:
-            plt.show()
-
         if self.save_images:
             filename = typ + "_generations"
             if epoch is not None:
@@ -340,9 +337,14 @@ class CycleGAN:
             path = "./images/" + filename
             if self.use_cloud:
                 path = f"{self.name}/images/{filename}"
-                save_figure(fig, path)
+                plt.savefig("temp.png", dpi=300, bbox_inches="tight")
             else:
                 plt.savefig(path)
+
+        plt.show()
+
+        if self.save_images and self.use_cloud:
+            save_figure(fig, path)
 
         if not self.show_images:
             plt.ion()
@@ -469,16 +471,20 @@ class CycleGAN:
         plt.title("CycleGAN Losses")
 
         plt.legend()
-        plt.show()
 
         if self.save_images:
             path = "images/losses.png"
 
             if self.use_cloud:
                 path = f"{self.cloud_bucket}/{self.name}/losses.png"
-                save_figure(fig, path)
+                plt.savefig("temp.png", dpi=300, bbox_inches="tight")
             else:
                 plt.savefig(path)
+
+        plt.show()
+
+        if self.save_images and self.use_cloud:
+            save_figure(path)
 
     def scores(self, test_x, test_y):
         shape = (1, self.height, self.width, self.num_channels)
