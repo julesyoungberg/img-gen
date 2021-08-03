@@ -380,18 +380,17 @@ class CycleGAN:
         """
         # tf.config.run_functions_eagerly(True)
         # tf.compat.v1.disable_eager_execution()
+        print(f"x examples: {len(train_x)}, y examples: {len(train_y)}")
 
         if checkpoints:
             ckpt_manager = self.initialize_checkpoint_manager()
 
         if test_x is not None and test_y is not None:
             self.generate_images(test_x, test_y, epoch=-1)
-        print("training")
 
         shape = (1, self.width, self.height, self.num_channels)
 
         for epoch in range(epochs):
-            print(f"epoch: {epoch} ", end="")
             start = time.time()
 
             num_samples = len(train_x)
@@ -399,6 +398,9 @@ class CycleGAN:
             prev_done = 0
 
             data = enumerate(tf.data.Dataset.zip((train_x, train_y)))
+            print("data len: ", len(data))
+
+            print(f"epoch: {epoch} ", end="")
 
             # run the train_step algorithm for each image
             for k, (real_x, real_y) in data:
