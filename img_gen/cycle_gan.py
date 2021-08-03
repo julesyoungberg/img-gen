@@ -378,8 +378,6 @@ class CycleGAN:
         """
         Train the networks.
         """
-        # tf.config.run_functions_eagerly(True)
-        # tf.compat.v1.disable_eager_execution()
         print(f"x examples: {len(train_x)}, y examples: {len(train_y)}")
 
         if checkpoints:
@@ -482,8 +480,6 @@ class CycleGAN:
                 plt.savefig(path)
 
     def scores(self, test_x, test_y):
-        # tf.config.run_functions_eagerly(True)
-
         test_x = tf.data.Dataset(test_x)
         test_y = tf.data.Dataset(test_y)
 
