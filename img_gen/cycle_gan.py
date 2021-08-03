@@ -398,8 +398,9 @@ class CycleGAN:
             percent_done = 0
             prev_done = 0
 
-            data = enumerate(tf.data.Dataset.zip((train_x, train_y)))
-            print("data len: ", len(data))
+            zipped = tf.data.Dataset.zip((train_x, train_y))
+            data = enumerate(zipped)
+            print("data len: ", len(zipped))
 
             print(f"epoch: {epoch} ", end="")
 
