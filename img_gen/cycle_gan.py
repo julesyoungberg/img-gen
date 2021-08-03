@@ -422,7 +422,7 @@ class CycleGAN:
             print(f" time taken: {time.time() - start}s")
 
             self.aggregate_losses()
-            # self.print_losses()
+            self.print_losses()
 
             self.generate_images(train_x, train_y, typ="train", epoch=epoch)
 
