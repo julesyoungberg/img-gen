@@ -285,7 +285,7 @@ def resnet_generator(
     g = downsample(256, size=conv_size, norm_type=norm_type)(g)
     # R256
     for _ in range(num_res_blocks):
-        g = residual_block(g, filters=256, size=conv_size, norm_type=norm_type)
+        g = residual_block(g, filters=256, conv_size=conv_size, norm_type=norm_type)
 
     ## Decoder layers
     ##
