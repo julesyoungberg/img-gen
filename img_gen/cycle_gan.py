@@ -305,8 +305,8 @@ class CycleGAN:
 
         # sample images
         img_shape = (self.height, self.width, self.num_channels)
-        x = next(iter(test_x.shuffle(1))).numpy().reshape(img_shape)
-        y = next(iter(test_y.shuffle(1))).numpy().reshape(img_shape)
+        x = next(iter(test_x.shuffle(1000))).numpy().reshape(img_shape)
+        y = next(iter(test_y.shuffle(1000))).numpy().reshape(img_shape)
 
         # get predictions for those images
         shape = (1, self.height, self.width, self.num_channels)
@@ -346,6 +346,7 @@ class CycleGAN:
 
         if not self.show_images:
             plt.ion()
+            plt.close()
 
     def save_current_models(self, save_dir="models"):
         if self.use_cloud:
@@ -471,7 +472,7 @@ class CycleGAN:
         plt.show()
 
         if self.save_images:
-            path = "./images/losses.png"
+            path = "images/losses.png"
 
             if self.use_cloud:
                 path = f"{self.cloud_bucket}/{self.name}/losses.png"
@@ -480,9 +481,6 @@ class CycleGAN:
                 plt.savefig(path)
 
     def scores(self, test_x, test_y):
-        test_x = tf.data.Dataset(test_x)
-        test_y = tf.data.Dataset(test_y)
-
         shape = (1, self.height, self.width, self.num_channels)
 
         gen_g_losses = np.array([])
@@ -539,7 +537,7 @@ def build_model(hp, **params):
     gen_dropout = hp.Float("gen_dropout", 0.0, 0.5, default=0.0)
     gen_conv_size = hp.Choice("gen_conv_size", [(3, 3), (4, 4)], default=(3, 3))
     dis_loss_weight = hp.Float("dis_loss_weight", 0.5, 1.0, default=1.0)
-    lmbd = hp.Int("lmbd", 1, 15, default=10)
+    # lmbd = hp.Int("lmbd", 1, 15, default=10)
     learning_rate = hp.Float("learning_rate", 1e-4, 1e-2, sampling="log", default=1e-3)
     dis_alpha = hp.Float("dis_alpha", 0.1, 0.7, default=0.2)
 
@@ -551,7 +549,7 @@ def build_model(hp, **params):
         gen_dropout=gen_dropout,
         gen_conv_size=gen_conv_size,
         dis_loss_weight=dis_loss_weight,
-        lmbd=lmbd,
+        # lmbd=lmbd,
         learning_rate=learning_rate,
         dis_alpha=dis_alpha,
         **params,
@@ -589,8 +587,7 @@ class GANTuner(BaseTuner):
     def run_trial(self, trial, X, y):
         hp = trial.hyperparameters
 
-        model = self.hypermodel.build(trial.hyperparameters)
-        # model = build_model(trial.hyperparameters)
+        model = self.hypermodel.build(trial.hyperparameters, name=self.project_name)
 
         def on_epoch_end(epoch, loss):
             self.on_epoch_end(trial, model, epoch, logs={"loss": loss})
@@ -613,7 +610,7 @@ def find_optimal_cycle_gan(
     epochs=40,
     checkpoints=True,
     directory="optimization_results",
-    project_name="cycle_gan",
+    name="cycle_gan",
     **params,
 ):
     tuner = GANTuner(
@@ -622,7 +619,7 @@ def find_optimal_cycle_gan(
         ),
         hypermodel=build_model,
         directory=directory,
-        project_name=project_name,
+        project_name=name,
     )
 
     tuner.search(train_x, train_y)
@@ -638,6 +635,7 @@ def find_optimal_cycle_gan(
         show_images=False,
         save_images=True,
         save_models=True,
+        name=name,
         **params,
     )
 
