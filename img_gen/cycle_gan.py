@@ -400,11 +400,11 @@ class CycleGAN:
 
             y = train_y
             if len(train_x) < len(train_y):
-                y = train_y.shuffle().take(len(train_x))
+                y = train_y.shuffle(len(train_x))
 
             x = train_x
             if len(train_y) < len(train_x):
-                x = train_x.shuffle().take(len(train_y))
+                x = train_x.shuffle(len(train_y))
 
             zipped = tf.data.Dataset.zip((x, y))
             data = enumerate(zipped)
