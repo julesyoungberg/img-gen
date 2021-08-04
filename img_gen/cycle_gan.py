@@ -2,6 +2,7 @@
 Code for building and optimizing CycleGANs.
 """
 
+import math
 import os
 import time
 
@@ -344,10 +345,11 @@ class CycleGAN:
             else:
                 plt.savefig(path)
 
-        plt.show()
+        if self.show_images:
+            plt.show()
 
         if self.save_images and self.use_cloud:
-            save_figure(fig, path)
+            save_figure(path)
 
         if not self.show_images:
             plt.ion()
@@ -581,9 +583,11 @@ class GANTuner(BaseTuner):
         self,
         oracle,
         hypermodel,
+        use_cross_validation=False,
         **kwargs,
     ):
         super().__init__(oracle=oracle, hypermodel=hypermodel, **kwargs)
+        self.use_cross_validation = use_cross_validation
 
     # https://github.com/keras-team/keras-tuner/blob/b69f320c8cb4453d6f4d0eb00f3f71a78bda55c5/keras_tuner/engine/tuner.py#L247
     def on_epoch_end(self, trial, model, epoch, logs=None):
@@ -607,10 +611,41 @@ class GANTuner(BaseTuner):
 
         model = self.hypermodel.build(trial.hyperparameters, name=self.project_name)
 
-        def on_epoch_end(epoch, loss):
-            self.on_epoch_end(trial, model, epoch, logs={"loss": loss})
+        if not self.use_cross_validation:
 
-        model.fit(X, y, on_epoch_end=on_epoch_end)
+            def on_epoch_end(epoch, loss):
+                self.on_epoch_end(trial, model, epoch, logs={"loss": loss})
+
+            model.fit(X, y, on_epoch_end=on_epoch_end)
+            return
+
+        n_folds = 5
+        fold_size = math.floor(len(X) / n_folds)
+        val_losses = []
+
+        for i in range(n_folds):
+            x_train = []
+            x_test = X[i : (i + 1) * fold_size]
+            y_train = []
+            y_test = y[i : (i + 1) * fold_size]
+
+            if i == 0:
+                x_train = X[0:fold_size]
+                y_train = y[0:fold_size]
+
+            if i < n_folds - 1:
+                x_train = x_train + X[(i + 1) * fold_size : (i + 2) * fold_size]
+                y_train = y_train + y[(i + 1) * fold_size : (i + 2) * fold_size]
+
+            model.fit(x_train, y_train)
+
+            gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss = model.scores()
+
+            loss = (gen_g_loss + gen_f_loss + dis_x_loss + dis_y_loss) / 4
+            val_losses.append(loss)
+
+        self.update_trial(trial.trial_id, {"loss": loss})
+        self.save_model(trial.trial_id, model)
 
     def save_model(self, trial_id, model, step=0):
         model.save_current_models(self.get_trial_dir(trial_id))
