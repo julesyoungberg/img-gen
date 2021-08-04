@@ -5,7 +5,7 @@ IMAGE_URI=gcr.io/${PROJECT_ID}/${IMAGE_NAME}
 .PHONY: login lint format build train push
 
 login:
-	gcloud auth activate-service-account --key-file=./key.json
+	gcloud auth activate-service-account --key-file=./service_account.json
 
 lint:
 	poetry run pylint img_gen

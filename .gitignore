@@ -7,7 +7,7 @@ __pycache__
 dist
 build
 img_gen.egg-info
-key.json
+service_account.json
 tfcloud
 optimization_results
 models
