@@ -461,7 +461,7 @@ class CycleGAN:
         if self.save_models:
             self.save_current_models()
 
-    def fit(self, train_x, train_y, epochs=5, checkpoints=True, on_epoch_end=None):
+    def fit(self, train_x, train_y, epochs=5, checkpoints=False, on_epoch_end=None):
         self.train(
             train_x,
             train_y,

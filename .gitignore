@@ -9,3 +9,6 @@ build
 img_gen.egg-info
 key.json
 tfcloud
+optimization_results
+models
+checkpoints

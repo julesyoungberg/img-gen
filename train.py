@@ -44,6 +44,9 @@ cyc_gan = find_optimal_cycle_gan(
     use_cloud=True,
     cloud_bucket=GCP_BUCKET,
 )
+# cyc_gan = CycleGAN(gen_conv_size=3)
+
+# cyc_gan.train(train_x, train_y, test_x, test_y, epochs=1)
 
 # print results
 # cyc_gan.print_losses()
