@@ -315,7 +315,7 @@ class CycleGAN:
         y = next(iter(test_y.shuffle(1000))).numpy().reshape(img_shape)
 
         # get predictions for those images
-        shape = (1, self.height, self.width, self.num_channels)
+        shape = (None, self.height, self.width, self.num_channels)
         y_hat = self.generator_g.predict(x.reshape(shape)).reshape(img_shape)
         x_hat = self.generator_f.predict(y.reshape(shape)).reshape(img_shape)
 
@@ -396,7 +396,7 @@ class CycleGAN:
         if test_x is not None and test_y is not None:
             self.generate_images(test_x, test_y, epoch=-1)
 
-        shape = (1, self.width, self.height, self.num_channels)
+        shape = (None, self.width, self.height, self.num_channels)
         num_examples = min(len(train_x), len(train_y))
 
         for epoch in range(epochs):
