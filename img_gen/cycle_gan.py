@@ -51,6 +51,7 @@ class CycleGAN:
         show_images=False,
         save_images=False,
         save_models=False,
+        batch_size=1,
     ):
         self.num_channels = num_channels
         self.width = width
@@ -70,6 +71,7 @@ class CycleGAN:
         self.show_images = show_images
         self.save_images = save_images
         self.save_models = save_models
+        self.batch_size = batch_size
         self.setup()
         self.name = name
 
@@ -395,6 +397,7 @@ class CycleGAN:
             self.generate_images(test_x, test_y, epoch=-1)
 
         shape = (1, self.width, self.height, self.num_channels)
+        num_examples = min(len(train_x), len(train_y))
 
         for epoch in range(epochs):
             start = time.time()
@@ -403,17 +406,14 @@ class CycleGAN:
             percent_done = 0
             prev_done = 0
 
-            y = train_y
-            if len(train_x) < len(train_y):
-                y = train_y.shuffle(len(train_x))
-
-            x = train_x
-            if len(train_y) < len(train_x):
-                x = train_x.shuffle(len(train_y))
+            y = train_y.shuffle(num_examples)
+            x = train_x.shuffle(num_examples)
 
             zipped = tf.data.Dataset.zip((x, y))
-            data = enumerate(zipped)
             print("data len: ", len(zipped))
+
+            data = zipped.batch(self.batch_size) if self.batch_size else zipped
+            data = enumerate(data)
 
             print(f"epoch: {epoch} ", end="")
 
@@ -490,7 +490,7 @@ class CycleGAN:
             path = "images/losses.png"
 
             if self.use_cloud:
-                path = f"{self.cloud_bucket}/{self.name}/losses.png"
+                path = f"{self.name}/losses.png"
                 plt.savefig("temp.png", dpi=300, bbox_inches="tight")
             else:
                 plt.savefig(path)
@@ -545,6 +545,7 @@ PARAMETERS = [
     "dis_loss_weight",
     # "lmbd",
     "dis_alpha",
+    "batch_size",
 ]
 
 
@@ -560,6 +561,7 @@ def build_model(hp, **params):
     # lmbd = hp.Int("lmbd", 1, 15, default=10)
     learning_rate = hp.Float("learning_rate", 1e-4, 1e-2, sampling="log", default=1e-3)
     dis_alpha = hp.Float("dis_alpha", 0.1, 0.7, default=0.2)
+    batch_size = hp.Choice("batch_size", [1, 4, 16, 32], default=1)
 
     cycle_gan = CycleGAN(
         norm_type=norm_type,
@@ -572,6 +574,7 @@ def build_model(hp, **params):
         # lmbd=lmbd,
         learning_rate=learning_rate,
         dis_alpha=dis_alpha,
+        batch_size=batch_size,
         **params,
     )
 
@@ -664,6 +667,7 @@ def find_optimal_cycle_gan(
     checkpoints=True,
     directory="optimization_results",
     name="cycle_gan",
+    use_cross_validation=False,
     **params,
 ):
     tuner = GANTuner(
@@ -673,6 +677,7 @@ def find_optimal_cycle_gan(
         hypermodel=build_model,
         directory=directory,
         project_name=name,
+        use_cross_validation=use_cross_validation,
     )
 
     tuner.search(train_x, train_y)
