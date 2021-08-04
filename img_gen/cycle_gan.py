@@ -182,8 +182,11 @@ class CycleGAN:
 
         # if a checkpoint exists, restore the latest checkpoint.
         if ckpt_manager.latest_checkpoint:
-            ckpt.restore(ckpt_manager.latest_checkpoint)
-            print("Latest checkpoint restored!")
+            try:
+                ckpt.restore(ckpt_manager.latest_checkpoint)
+                print("Latest checkpoint restored!")
+            except ValueError:
+                print("Failed to restore checkpoint.")
 
         return ckpt_manager
 
