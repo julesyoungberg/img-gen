@@ -541,7 +541,7 @@ PARAMETERS = [
     "gen_dropout",
     "gen_conv_size",
     "dis_loss_weight",
-    "lmbd",
+    # "lmbd",
     "dis_alpha",
 ]
 
