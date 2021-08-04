@@ -419,8 +419,6 @@ class CycleGAN:
 
             # run the train_step algorithm for each image
             for k, (real_x, real_y) in data:
-                print("real x: ", real_x.shape)
-                print("real y: ", real_y.shape)
                 gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss = self.train_step(
                     tf.reshape(real_x, shape), tf.reshape(real_y, shape)
                 )
@@ -563,7 +561,7 @@ def build_model(hp, **params):
     # lmbd = hp.Int("lmbd", 1, 15, default=10)
     learning_rate = hp.Float("learning_rate", 1e-4, 1e-2, sampling="log", default=1e-3)
     dis_alpha = hp.Float("dis_alpha", 0.1, 0.7, default=0.2)
-    batch_size = hp.Choice("batch_size", [1, 2, 4, 8, 16], default=1)
+    batch_size = hp.Choice("batch_size", [1, 2, 4, 8], default=1)
 
     cycle_gan = CycleGAN(
         norm_type=norm_type,
