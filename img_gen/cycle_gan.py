@@ -412,13 +412,15 @@ class CycleGAN:
             zipped = tf.data.Dataset.zip((x, y))
             print("data len: ", len(zipped))
 
-            data = zipped.batch(self.batch_size) if self.batch_size else zipped
+            data = zipped.batch(self.batch_size) if self.batch_size > 1 else zipped
             data = enumerate(data)
 
             print(f"epoch: {epoch} ", end="")
 
             # run the train_step algorithm for each image
             for k, (real_x, real_y) in data:
+                print("real x: ", real_x.shape)
+                print("real y: ", real_y.shape)
                 gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss = self.train_step(
                     tf.reshape(real_x, shape), tf.reshape(real_y, shape)
                 )
