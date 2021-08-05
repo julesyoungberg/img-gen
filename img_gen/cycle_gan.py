@@ -548,7 +548,7 @@ PARAMETERS = [
     # "gen_conv_size",
     "dis_loss_weight",
     # "lmbd",
-    "dis_alpha",
+    # "dis_alpha",
     "batch_size",
     # "shuffle",
 ]
@@ -565,7 +565,7 @@ def build_model(hp, **params):
     dis_loss_weight = hp.Float("dis_loss_weight", 0.5, 1.0, default=1.0)
     # lmbd = hp.Int("lmbd", 1, 15, default=10)
     learning_rate = hp.Float("learning_rate", 1e-4, 1e-2, sampling="log", default=1e-3)
-    dis_alpha = hp.Float("dis_alpha", 0.1, 0.7, default=0.2)
+    # dis_alpha = hp.Float("dis_alpha", 0.1, 0.7, default=0.2)
     batch_size = hp.Choice("batch_size", [1, 2, 4], default=1)
     # shuffle = hp.Choice("shuffle", [True, False], default=True)
 
@@ -579,7 +579,7 @@ def build_model(hp, **params):
         dis_loss_weight=dis_loss_weight,
         # lmbd=lmbd,
         learning_rate=learning_rate,
-        dis_alpha=dis_alpha,
+        # dis_alpha=dis_alpha,
         batch_size=batch_size,
         # shuffle=shuffle,
         show_images=True,
