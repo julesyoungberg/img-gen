@@ -52,6 +52,7 @@ class CycleGAN:
         save_images=False,
         save_models=False,
         batch_size=1,
+        shuffle=True,
     ):
         self.num_channels = num_channels
         self.width = width
@@ -74,6 +75,7 @@ class CycleGAN:
         self.batch_size = batch_size
         self.setup()
         self.name = name
+        self.shuffle = shuffle
 
     def setup(self):
         self.name = (
@@ -397,17 +399,19 @@ class CycleGAN:
             self.generate_images(test_x, test_y, epoch=-1)
 
         shape = (-1, self.width, self.height, self.num_channels)
-        num_examples = min(len(train_x), len(train_y))
+        num_samples = min(len(train_x), len(train_y))
+
+        y = None if self.shuffle else train_y.shuffle(num_samples)
+        x = None if self.shuffle else train_x.shuffle(num_samples)
 
         for epoch in range(epochs):
             start = time.time()
 
-            num_samples = len(train_x)
             percent_done = 0
             prev_done = 0
 
-            y = train_y.shuffle(num_examples)
-            x = train_x.shuffle(num_examples)
+            y = train_y.shuffle(num_samples) if self.shuffle else y
+            x = train_x.shuffle(num_samples) if self.shuffle else x
 
             zipped = tf.data.Dataset.zip((x, y))
             print("data len: ", len(zipped))
@@ -546,6 +550,7 @@ PARAMETERS = [
     # "lmbd",
     "dis_alpha",
     "batch_size",
+    # "shuffle",
 ]
 
 
@@ -562,6 +567,7 @@ def build_model(hp, **params):
     learning_rate = hp.Float("learning_rate", 1e-4, 1e-2, sampling="log", default=1e-3)
     dis_alpha = hp.Float("dis_alpha", 0.1, 0.7, default=0.2)
     batch_size = hp.Choice("batch_size", [1, 2, 4], default=1)
+    # shuffle = hp.Choice("shuffle", [True, False], default=True)
 
     cycle_gan = CycleGAN(
         norm_type=norm_type,
@@ -671,9 +677,7 @@ def find_optimal_cycle_gan(
     **params,
 ):
     tuner = GANTuner(
-        oracle=kt.oracles.BayesianOptimization(
-            objective=kt.Objective("loss", "min"), max_trials=2
-        ),
+        oracle=kt.oracles.BayesianOptimization(objective=kt.Objective("loss", "min")),
         hypermodel=build_model,
         directory=directory,
         project_name=name,
