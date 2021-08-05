@@ -415,9 +415,8 @@ class CycleGAN:
             y = train_y.shuffle(num_samples) if self.shuffle else y
             x = train_x.shuffle(num_samples) if self.shuffle else x
 
-            zipped = tf.data.Dataset.zip((x, y))
-            print("data len: ", len(zipped))
-            data = enumerate(zipped)
+            data = tf.data.Dataset.zip((x, y))
+            print("data len: ", len(data))
 
             print(f"epoch: {epoch} ", end="")
 
