@@ -581,6 +581,7 @@ def build_model(hp, **params):
         learning_rate=learning_rate,
         dis_alpha=dis_alpha,
         batch_size=batch_size,
+        # shuffle=shuffle,
         **params,
     )
 
@@ -677,7 +678,9 @@ def find_optimal_cycle_gan(
     **params,
 ):
     tuner = GANTuner(
-        oracle=kt.oracles.BayesianOptimization(objective=kt.Objective("loss", "min")),
+        oracle=kt.oracles.BayesianOptimization(
+            objective=kt.Objective("loss", "min"), max_trials=10
+        ),
         hypermodel=build_model,
         directory=directory,
         project_name=name,
