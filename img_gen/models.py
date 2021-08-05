@@ -352,7 +352,9 @@ def discriminator_loss_cross_entropy(real, generated):
 
 
 def discriminator_loss_least_squares(real, generated):
-    return tf.math.reduce_mean(tf.math.square(real - 1) + tf.math.square(generated))
+    return tf.math.reduce_mean(tf.math.square(real - 1)) + tf.math.reduce_mean(
+        tf.math.square(generated)
+    )
 
 
 def discriminator_loss(real, generated, loss_type="least_squares"):
