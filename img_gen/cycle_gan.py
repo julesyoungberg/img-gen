@@ -208,10 +208,10 @@ class CycleGAN:
         id_y = self.generator_g(real_y, training=True)
 
         # discriminate the real and generated results
-        real_x_val = self.discriminator_x(real_x, training=True) * self.dis_loss_weight
-        real_y_val = self.discriminator_y(real_y, training=True) * self.dis_loss_weight
-        fake_x_val = self.discriminator_x(fake_x, training=True) * self.dis_loss_weight
-        fake_y_val = self.discriminator_y(fake_y, training=True) * self.dis_loss_weight
+        real_x_val = self.discriminator_x(real_x, training=True)
+        real_y_val = self.discriminator_y(real_y, training=True)
+        fake_x_val = self.discriminator_x(fake_x, training=True)
+        fake_y_val = self.discriminator_y(fake_y, training=True)
 
         # 2. Calculate loss
         gen_g_adv_loss = generator_loss(fake_y_val, loss_type=self.loss_type)
@@ -231,11 +231,13 @@ class CycleGAN:
             gen_f_loss += image_diff(real_y, id_y) * 0.5 * self.lmbd
 
         # discriminator losses
-        dis_x_loss = discriminator_loss(
-            real_x_val, fake_x_val, loss_type=self.loss_type
+        dis_x_loss = (
+            discriminator_loss(real_x_val, fake_x_val, loss_type=self.loss_type)
+            * self.dis_loss_weight
         )
-        dis_y_loss = discriminator_loss(
-            real_y_val, fake_y_val, loss_type=self.loss_type
+        dis_y_loss = (
+            discriminator_loss(real_y_val, fake_y_val, loss_type=self.loss_type)
+            * self.diss_loss_weight
         )
 
         return gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss
