@@ -404,6 +404,8 @@ class CycleGAN:
         y = None if self.shuffle else train_y.shuffle(num_samples)
         x = None if self.shuffle else train_x.shuffle(num_samples)
 
+        num_batches = math.ceil(num_samples / self.batch_size)
+
         for epoch in range(epochs):
             start = time.time()
 
@@ -415,14 +417,14 @@ class CycleGAN:
 
             zipped = tf.data.Dataset.zip((x, y))
             print("data len: ", len(zipped))
-
-            data = zipped.batch(self.batch_size) if self.batch_size > 1 else zipped
-            data = enumerate(data)
+            data = enumerate(zipped)
 
             print(f"epoch: {epoch} ", end="")
 
             # run the train_step algorithm for each image
-            for k, (real_x, real_y) in data:
+            for k in range(num_batches):
+                end_index = math.min(num_samples, (k + 1) * self.batch_size)
+                real_x, real_y = data[k * self.batch_size : end_index]
                 gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss = self.train_step(
                     tf.reshape(real_x, shape), tf.reshape(real_y, shape)
                 )
