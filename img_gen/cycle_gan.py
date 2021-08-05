@@ -563,7 +563,7 @@ PARAMETERS = [
     "gen_type",
     "use_identity",
     "gen_dropout",
-    # "gen_conv_size",
+    "gen_conv_size",
     "dis_loss_weight",
     # "lmbd",
     # "dis_alpha",
@@ -578,7 +578,7 @@ def build_model(hp, **params):
     gen_type = hp.Choice("gen_type", ["unet", "resnet"])
     use_identity = hp.Choice("use_identity", [False, True])
     gen_dropout = hp.Float("gen_dropout", 0.0, 0.5, default=0.0)
-    # gen_conv_size = hp.Choice("gen_conv_size", [3, 4], default=3)
+    gen_conv_size = hp.Choice("gen_conv_size", [3, 4], default=3)
     dis_loss_weight = hp.Float("dis_loss_weight", 0.5, 1.0, default=1.0)
     # lmbd = hp.Int("lmbd", 1, 15, default=10)
     learning_rate = hp.Float("learning_rate", 1e-4, 1e-2, sampling="log", default=1e-3)
@@ -591,7 +591,7 @@ def build_model(hp, **params):
         gen_type=gen_type,
         use_identity=use_identity,
         gen_dropout=gen_dropout,
-        # gen_conv_size=(gen_conv_size, gen_conv_size),
+        gen_conv_size=(gen_conv_size, gen_conv_size),
         dis_loss_weight=dis_loss_weight,
         # lmbd=lmbd,
         learning_rate=learning_rate,
