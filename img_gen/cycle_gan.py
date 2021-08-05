@@ -209,11 +209,27 @@ class CycleGAN:
         id_x = self.generator_f(real_x, training=True)
         id_y = self.generator_g(real_y, training=True)
 
+        self.fake_x_buffer.append(fake_x)
+        self.fake_y_buffer.append(fake_y)
+
+        if len(self.fake_x_buffer) > self.buffer_size:
+            self.fake_x_buffer = self.fake_x_buffer[1:]
+
+        if len(self.fake_y_buffer) > self.buffer_size:
+            self.fake_y_buffer = self.fake_y_buffer[1:]
+
+        all_fake_x = tf.convert_to_tensor(self.fake_x_buffer)
+        all_fake_y = tf.convert_to_tensor(self.fake_y_buffer)
+
+        shape = (-1, self.height, self.width, self.num_channels)
+        all_fake_x = tf.reshape(all_fake_x, shape)
+        all_fake_y = tf.reshape(all_fake_y, shape)
+
         # discriminate the real and generated results
         real_x_val = self.discriminator_x(real_x, training=True)
         real_y_val = self.discriminator_y(real_y, training=True)
-        fake_x_val = self.discriminator_x(fake_x, training=True)
-        fake_y_val = self.discriminator_y(fake_y, training=True)
+        fake_x_val = self.discriminator_x(all_fake_x, training=True)
+        fake_y_val = self.discriminator_y(all_fake_y, training=True)
 
         # 2. Calculate loss
         gen_g_adv_loss = generator_loss(fake_y_val, loss_type=self.loss_type)
@@ -232,30 +248,13 @@ class CycleGAN:
             gen_g_loss += image_diff(real_x, id_x) * 0.5 * self.lmbd
             gen_f_loss += image_diff(real_y, id_y) * 0.5 * self.lmbd
 
-        self.fake_x_buffer.append(fake_x_val)
-        self.fake_y_buffer.append(fake_y_val)
-
-        if len(self.fake_x_buffer) > self.buffer_size:
-            self.fake_x_buffer = self.fake_x_buffer[1:]
-
-        if len(self.fake_y_buffer) > self.buffer_size:
-            self.fake_y_buffer = self.fake_y_buffer[1:]
-
-        all_fake_x = tf.convert_to_tensor(self.fake_x_buffer)
-        all_fake_y = tf.convert_to_tensor(self.fake_y_buffer)
-        print("all fake x shape: ", all_fake_x.shape)
-        print("all fake y shape: ", all_fake_y.shape)
-
-        shape = (-1, self.height, self.width, self.num_channels)
-        all_fake_x = tf.reshape(all_fake_x, shape)
-        all_fake_y = tf.reshape(all_fake_y, shape)
         # discriminator losses
         dis_x_loss = (
-            discriminator_loss(real_x_val, all_fake_x, loss_type=self.loss_type)
+            discriminator_loss(real_x_val, fake_x_val, loss_type=self.loss_type)
             * self.dis_loss_weight
         )
         dis_y_loss = (
-            discriminator_loss(real_y_val, all_fake_y, loss_type=self.loss_type)
+            discriminator_loss(real_y_val, fake_y_val, loss_type=self.loss_type)
             * self.dis_loss_weight
         )
 
