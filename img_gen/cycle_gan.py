@@ -37,7 +37,7 @@ class CycleGAN:
         height=256,
         norm_type="instancenorm",  # batchnorm | instancenorm
         learning_rate=2e-4,
-        loss_type="cross_entropy",  # cross_entropy | least_squares
+        loss_type="least_squares",  # cross_entropy | least_squares
         gen_type="unet",  # unet | resnet
         use_identity=True,
         gen_dropout=0.0,
@@ -237,7 +237,7 @@ class CycleGAN:
         )
         dis_y_loss = (
             discriminator_loss(real_y_val, fake_y_val, loss_type=self.loss_type)
-            * self.diss_loss_weight
+            * self.dis_loss_weight
         )
 
         return gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss
