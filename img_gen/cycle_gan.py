@@ -197,7 +197,7 @@ class CycleGAN:
         return ckpt_manager
 
     @tf.function
-    def calculate_losses(self, real_x, real_y):
+    def calculate_losses(self, real_x, real_y, training=False):
         # 1. get the predictions
         # generator G translates X -> Y
         # generator F translates Y -> X
@@ -210,21 +210,25 @@ class CycleGAN:
         id_x = self.generator_f(real_x, training=True)
         id_y = self.generator_g(real_y, training=True)
 
-        self.fake_x_buffer.append(fake_x)
-        self.fake_y_buffer.append(fake_y)
+        all_fake_x = fake_x
+        all_fake_y = fake_y
 
-        if len(self.fake_x_buffer) > self.buffer_size:
-            self.fake_x_buffer = self.fake_x_buffer[1:]
+        if training:
+            self.fake_x_buffer.append(fake_x)
+            self.fake_y_buffer.append(fake_y)
 
-        if len(self.fake_y_buffer) > self.buffer_size:
-            self.fake_y_buffer = self.fake_y_buffer[1:]
+            if len(self.fake_x_buffer) > self.buffer_size:
+                self.fake_x_buffer = self.fake_x_buffer[1:]
 
-        all_fake_x = tf.convert_to_tensor(self.fake_x_buffer)
-        all_fake_y = tf.convert_to_tensor(self.fake_y_buffer)
+            if len(self.fake_y_buffer) > self.buffer_size:
+                self.fake_y_buffer = self.fake_y_buffer[1:]
 
-        shape = (-1, self.height, self.width, self.num_channels)
-        all_fake_x = tf.reshape(all_fake_x, shape)
-        all_fake_y = tf.reshape(all_fake_y, shape)
+            all_fake_x = tf.convert_to_tensor(self.fake_x_buffer)
+            all_fake_y = tf.convert_to_tensor(self.fake_y_buffer)
+
+            shape = (-1, self.height, self.width, self.num_channels)
+            all_fake_x = tf.reshape(all_fake_x, shape)
+            all_fake_y = tf.reshape(all_fake_y, shape)
 
         # discriminate the real and generated results
         real_x_val = self.discriminator_x(real_x, training=True)
@@ -269,7 +273,7 @@ class CycleGAN:
         """
         with tf.GradientTape(persistent=True) as tape:
             gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss = self.calculate_losses(
-                real_x, real_y
+                real_x, real_y, training=True
             )
 
         # 3. calculate gradients for generator and discriminator
