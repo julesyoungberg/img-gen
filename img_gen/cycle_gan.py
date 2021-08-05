@@ -422,7 +422,7 @@ class CycleGAN:
 
             # run the train_step algorithm for each image
             for k in range(num_batches):
-                end_index = math.min(num_samples, (k + 1) * self.batch_size)
+                end_index = min(num_samples, (k + 1) * self.batch_size)
                 real_x, real_y = data[k * self.batch_size : end_index]
                 gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss = self.train_step(
                     tf.reshape(real_x, shape), tf.reshape(real_y, shape)
