@@ -10,6 +10,7 @@ from tensorflow.keras import Sequential
 from tensorflow.keras.layers import (
     Activation,
     BatchNormalization,
+    Add,
     Concatenate,
     Conv2D,
     Conv2DTranspose,
@@ -116,6 +117,7 @@ def upsample(
 def residual_block(inpt, filters=256, conv_size=(3, 3), norm_type="instancenorm"):
     """
     Creates a residual block for downsampling an image.
+    based on: https://machinelearningmastery.com/how-to-develop-cyclegan-models-from-scratch-with-keras/
     """
     initializer = tf.random_normal_initializer(0.0, 0.02)
 
@@ -135,7 +137,7 @@ def residual_block(inpt, filters=256, conv_size=(3, 3), norm_type="instancenorm"
 
     # add input to output to create residual block
     # g(x) = f(x) + x
-    r = Concatenate()([r, inpt])
+    r = Add()([r, inpt])
 
     return r
 
@@ -265,7 +267,7 @@ def resnet_generator(
     dropout=0.0,
 ):
     """
-    Modifier Res-Net (https://arxiv.org/abs/1611.07004).
+    Modified Res-Net (https://arxiv.org/abs/1611.07004).
     based on: https://machinelearningmastery.com/how-to-develop-cyclegan-models-from-scratch-with-keras/
     """
     inpt = Input(shape=image_shape)
