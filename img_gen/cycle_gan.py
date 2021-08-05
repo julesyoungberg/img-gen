@@ -110,6 +110,9 @@ class CycleGAN:
         self.generator_f_epoch_losses = []
         self.discriminator_y_epoch_losses = []
         self.discriminator_x_epoch_losses = []
+        self.fake_x_buffer = []
+        self.fake_y_buffer = []
+        self.buffer_size = 50 / self.batch_size
 
         if self.gen_type == "resnet":
             # generator G maps from image set X to Y
@@ -193,7 +196,6 @@ class CycleGAN:
 
         return ckpt_manager
 
-    @tf.function
     def calculate_losses(self, real_x, real_y):
         # 1. get the predictions
         # generator G translates X -> Y
@@ -230,13 +232,26 @@ class CycleGAN:
             gen_g_loss += image_diff(real_x, id_x) * 0.5 * self.lmbd
             gen_f_loss += image_diff(real_y, id_y) * 0.5 * self.lmbd
 
+        self.fake_x_buffer.append(fake_x_val)
+        self.fake_y_buffer.append(fake_y_val)
+
+        if len(self.fake_x_buffer) > self.buffer_size:
+            self.fake_x_buffer = self.fake_x_buffer[1:]
+
+        if len(self.fake_y_buffer) > self.buffer_size:
+            self.fake_y_buffer = self.fake_y_buffer[1:]
+
+        shape = (None, self.height, self.width, self.num_channels)
+        all_fake_x = tf.convert_to_tensor(self.fake_x_buffer).reshape(shape)
+        all_fake_y = tf.convert_to_tensor(self.fake_y_buffer).reshape(shape)
+
         # discriminator losses
         dis_x_loss = (
-            discriminator_loss(real_x_val, fake_x_val, loss_type=self.loss_type)
+            discriminator_loss(real_x_val, all_fake_x, loss_type=self.loss_type)
             * self.dis_loss_weight
         )
         dis_y_loss = (
-            discriminator_loss(real_y_val, fake_y_val, loss_type=self.loss_type)
+            discriminator_loss(real_y_val, all_fake_y, loss_type=self.loss_type)
             * self.dis_loss_weight
         )
 
