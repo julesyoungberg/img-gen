@@ -243,6 +243,8 @@ class CycleGAN:
 
         all_fake_x = tf.convert_to_tensor(self.fake_x_buffer)
         all_fake_y = tf.convert_to_tensor(self.fake_y_buffer)
+        print("all fake x shape: ", all_fake_x.shape)
+        print("all fake y shape: ", all_fake_y.shape)
 
         shape = (-1, self.height, self.width, self.num_channels)
         all_fake_x = tf.reshape(all_fake_x, shape)
