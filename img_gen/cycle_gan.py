@@ -196,6 +196,7 @@ class CycleGAN:
 
         return ckpt_manager
 
+    @tf.function
     def calculate_losses(self, real_x, real_y):
         # 1. get the predictions
         # generator G translates X -> Y
