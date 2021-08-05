@@ -585,7 +585,7 @@ def build_model(hp, show_images=True, **params):
     # gen_conv_size = hp.Choice("gen_conv_size", [3, 4], default=3)
     dis_loss_weight = hp.Float("dis_loss_weight", 0.5, 1.0, default=1.0)
     # lmbd = hp.Int("lmbd", 1, 15, default=10)
-    learning_rate = hp.Float("learning_rate", 1e-4, 1e-2, sampling="log", default=1e-3)
+    learning_rate = hp.Float("learning_rate", 1e-4, 1e-3, sampling="log", default=2e-4)
     # dis_alpha = hp.Float("dis_alpha", 0.1, 0.7, default=0.2)
     batch_size = hp.Choice("batch_size", [1, 2], default=1)
     # shuffle = hp.Choice("shuffle", [True, False], default=True)
