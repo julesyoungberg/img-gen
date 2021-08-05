@@ -582,7 +582,6 @@ def build_model(hp, **params):
         dis_alpha=dis_alpha,
         batch_size=batch_size,
         # shuffle=shuffle,
-        show_images=True,
         **params,
     )
 
@@ -617,7 +616,7 @@ class GANTuner(BaseTuner):
         if trial.status == "STOPPED":
             model.stop_training = True
 
-    def run_trial(self, trial, X, y):
+    def run_trial(self, trial, x, y):
         hp = trial.hyperparameters
 
         model = self.hypermodel.build(trial.hyperparameters, name=self.project_name)
@@ -627,25 +626,26 @@ class GANTuner(BaseTuner):
             def on_epoch_end(epoch, loss):
                 self.on_epoch_end(trial, model, epoch, logs={"loss": loss})
 
-            model.fit(X, y, on_epoch_end=on_epoch_end)
+            model.fit(x, y, on_epoch_end=on_epoch_end)
+            model.generate_images(x, y)
             return
 
         n_folds = 5
-        fold_size = math.floor(len(X) / n_folds)
+        fold_size = math.floor(len(x) / n_folds)
         val_losses = []
 
         for i in range(n_folds):
             x_train = []
-            x_test = X[i : (i + 1) * fold_size]
+            x_test = x[i : (i + 1) * fold_size]
             y_train = []
             y_test = y[i : (i + 1) * fold_size]
 
             if i == 0:
-                x_train = X[0:fold_size]
+                x_train = x[0:fold_size]
                 y_train = y[0:fold_size]
 
             if i < n_folds - 1:
-                x_train = x_train + X[(i + 1) * fold_size : (i + 2) * fold_size]
+                x_train = x_train + x[(i + 1) * fold_size : (i + 2) * fold_size]
                 y_train = y_train + y[(i + 1) * fold_size : (i + 2) * fold_size]
 
             model.fit(x_train, y_train)
@@ -657,6 +657,7 @@ class GANTuner(BaseTuner):
 
         self.update_trial(trial.trial_id, {"loss": loss})
         self.save_model(trial.trial_id, model)
+        model.generate_images(x, y)
 
     def save_model(self, trial_id, model, step=0):
         model.save_current_models(self.get_trial_dir(trial_id))
