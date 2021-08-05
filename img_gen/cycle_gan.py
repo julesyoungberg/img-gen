@@ -467,7 +467,7 @@ class CycleGAN:
         if self.save_models:
             self.save_current_models()
 
-    def fit(self, train_x, train_y, epochs=5, checkpoints=False, on_epoch_end=None):
+    def fit(self, train_x, train_y, epochs=3, checkpoints=False, on_epoch_end=None):
         self.train(
             train_x,
             train_y,
@@ -575,13 +575,14 @@ def build_model(hp, **params):
         gen_type=gen_type,
         use_identity=use_identity,
         gen_dropout=gen_dropout,
-        # gen_conv_size=gen_conv_size,
+        # gen_conv_size=(gen_conv_size, gen_conv_size),
         dis_loss_weight=dis_loss_weight,
         # lmbd=lmbd,
         learning_rate=learning_rate,
         dis_alpha=dis_alpha,
         batch_size=batch_size,
         # shuffle=shuffle,
+        show_images=True,
         **params,
     )
 
