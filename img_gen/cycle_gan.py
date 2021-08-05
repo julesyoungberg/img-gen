@@ -404,8 +404,6 @@ class CycleGAN:
         y = None if self.shuffle else train_y.shuffle(num_samples)
         x = None if self.shuffle else train_x.shuffle(num_samples)
 
-        num_batches = math.ceil(num_samples / self.batch_size)
-
         for epoch in range(epochs):
             start = time.time()
 
@@ -415,15 +413,16 @@ class CycleGAN:
             y = train_y.shuffle(num_samples) if self.shuffle else y
             x = train_x.shuffle(num_samples) if self.shuffle else x
 
-            data = tf.data.Dataset.zip((x, y))
-            print("data len: ", len(data))
+            zipped = tf.data.Dataset.zip((x, y))
+            print("data len: ", len(zipped))
+
+            data = zipped.batch(self.batch_size) if self.batch_size > 1 else zipped
+            data = enumerate(data)
 
             print(f"epoch: {epoch} ", end="")
 
             # run the train_step algorithm for each image
-            for k in range(num_batches):
-                end_index = min(num_samples, (k + 1) * self.batch_size)
-                real_x, real_y = data[k * self.batch_size : end_index]
+            for k, (real_x, real_y) in data:
                 gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss = self.train_step(
                     tf.reshape(real_x, shape), tf.reshape(real_y, shape)
                 )
@@ -567,7 +566,7 @@ def build_model(hp, **params):
     # lmbd = hp.Int("lmbd", 1, 15, default=10)
     learning_rate = hp.Float("learning_rate", 1e-4, 1e-2, sampling="log", default=1e-3)
     # dis_alpha = hp.Float("dis_alpha", 0.1, 0.7, default=0.2)
-    batch_size = hp.Choice("batch_size", [1, 2, 4], default=1)
+    batch_size = hp.Choice("batch_size", [1, 2], default=1)
     # shuffle = hp.Choice("shuffle", [True, False], default=True)
 
     cycle_gan = CycleGAN(
