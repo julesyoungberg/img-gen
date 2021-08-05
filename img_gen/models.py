@@ -318,7 +318,6 @@ def discriminator(
     image_shape=(256, 256, 3),
     conv_size=(4, 4),
     norm_type="instancenorm",
-    loss_weight=0.5,
     alpha=0.2,
 ):
     """
@@ -343,15 +342,13 @@ def discriminator(
         d
     )  # (bs, 30, 30, 1)
 
-    model = Model(inpt, d)
-    model.compile(loss="mse", optimizer=opt, loss_weights=[loss_weight])
-    return model
+    return Model(inpt, d)
 
 
 def discriminator_loss_cross_entropy(real, generated):
     real_loss = loss(tf.ones_like(real), real)
     gen_loss = loss(tf.zeros_like(generated), generated)
-    return (real_loss + gen_loss) * 0.5
+    return real_loss + gen_loss
 
 
 def discriminator_loss_least_squares(real, generated):

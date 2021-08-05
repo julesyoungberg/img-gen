@@ -149,7 +149,6 @@ class CycleGAN:
             self.discriminator_x_optimizer,
             image_shape=image_shape,
             norm_type=self.norm_type,
-            loss_weight=self.dis_loss_weight,
             alpha=self.dis_alpha,
         )
         # discriminator y determines whether an image belongs to set Y
@@ -157,7 +156,6 @@ class CycleGAN:
             self.discriminator_y_optimizer,
             image_shape=image_shape,
             norm_type=self.norm_type,
-            loss_weight=self.dis_loss_weight,
             alpha=self.dis_alpha,
         )
 
@@ -210,10 +208,10 @@ class CycleGAN:
         id_y = self.generator_g(real_y, training=True)
 
         # discriminate the real and generated results
-        real_x_val = self.discriminator_x(real_x, training=True)
-        real_y_val = self.discriminator_y(real_y, training=True)
-        fake_x_val = self.discriminator_x(fake_x, training=True)
-        fake_y_val = self.discriminator_y(fake_y, training=True)
+        real_x_val = self.discriminator_x(real_x, training=True) * self.dis_loss_weight
+        real_y_val = self.discriminator_y(real_y, training=True) * self.dis_loss_weight
+        fake_x_val = self.discriminator_x(fake_x, training=True) * self.dis_loss_weight
+        fake_y_val = self.discriminator_y(fake_y, training=True) * self.dis_loss_weight
 
         # 2. Calculate loss
         gen_g_adv_loss = generator_loss(fake_y_val, loss_type=self.loss_type)
