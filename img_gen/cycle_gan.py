@@ -570,6 +570,7 @@ PARAMETERS = [
     # "gen_conv_size",
     "dis_loss_weight",
     # "lmbd",
+    "learning_rate",
     # "dis_alpha",
     "batch_size",
     # "shuffle",
