@@ -582,6 +582,7 @@ def build_model(hp, **params):
         dis_alpha=dis_alpha,
         batch_size=batch_size,
         # shuffle=shuffle,
+        show_images=True,
         **params,
     )
 
@@ -627,7 +628,6 @@ class GANTuner(BaseTuner):
                 self.on_epoch_end(trial, model, epoch, logs={"loss": loss})
 
             model.fit(x, y, on_epoch_end=on_epoch_end)
-            model.generate_images(x, y)
             return
 
         n_folds = 5
@@ -657,7 +657,6 @@ class GANTuner(BaseTuner):
 
         self.update_trial(trial.trial_id, {"loss": loss})
         self.save_model(trial.trial_id, model)
-        model.generate_images(x, y)
 
     def save_model(self, trial_id, model, step=0):
         model.save_current_models(self.get_trial_dir(trial_id))
