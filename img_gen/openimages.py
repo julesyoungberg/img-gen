@@ -21,6 +21,7 @@ def load_images(input_labels=[], output_labels=[]):
         "label_mode": None,
         "batch_size": None,
         "shuffle": False,
+        "smart_resize": True,
     }
 
     print("Creating datasets...")
