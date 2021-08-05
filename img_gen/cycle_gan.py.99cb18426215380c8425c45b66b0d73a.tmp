@@ -598,7 +598,7 @@ def build_model(hp, show_images=False, **params):
         # dis_alpha=dis_alpha,
         batch_size=batch_size,
         # shuffle=shuffle,
-        show_images=True,
+        show_images=show_images,
         **params,
     )
 
