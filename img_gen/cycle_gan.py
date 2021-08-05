@@ -244,7 +244,7 @@ class CycleGAN:
         all_fake_x = tf.convert_to_tensor(self.fake_x_buffer)
         all_fake_y = tf.convert_to_tensor(self.fake_y_buffer)
 
-        shape = (None, self.height, self.width, self.num_channels)
+        shape = (-1, self.height, self.width, self.num_channels)
         all_fake_x = tf.reshape(all_fake_x, shape)
         all_fake_y = tf.reshape(all_fake_y, shape)
         # discriminator losses
