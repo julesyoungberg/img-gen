@@ -384,7 +384,7 @@ class CycleGAN:
 
     def save_current_models(self, save_dir="models"):
         if self.use_cloud:
-            os.path.join("gs://", self.cloud_bucket, self.name, save_dir)
+            save_dir = os.path.join("gs://", self.cloud_bucket, self.name, save_dir)
 
         self.generator_g.save(os.path.join(save_dir, "generator_g"))
         self.generator_f.save(os.path.join(save_dir, "generator_f"))
@@ -393,7 +393,7 @@ class CycleGAN:
 
     def load_models(self, save_dir="models"):
         if self.use_cloud:
-            os.path.join("gs://", self.cloud_bucket, self.name, save_dir)
+            save_dir = os.path.join("gs://", self.cloud_bucket, self.name, save_dir)
 
         self.generator_g.load_weights(os.path.join(save_dir, "generator_g"))
         self.generator_f.load_weights(os.path.join(save_dir, "generator_f"))
@@ -582,7 +582,7 @@ def build_model(hp, show_images=True, **params):
     # norm_type = hp.Choice("norm_type", ["batchnorm", "instancenorm"])
     # gen_type = hp.Choice("gen_type", ["unet", "resnet"])
     use_identity = hp.Choice("use_identity", [False, True])
-    gen_dropout = hp.Float("gen_dropout", 0.0, 0.4, default=0.0)
+    gen_dropout = hp.Float("gen_dropout", 0.0, 0.3, default=0.0)
     # gen_conv_size = hp.Choice("gen_conv_size", [3, 4], default=3)
     dis_loss_weight = hp.Float("dis_loss_weight", 0.5, 1.0, default=1.0)
     # lmbd = hp.Int("lmbd", 1, 15, default=10)
