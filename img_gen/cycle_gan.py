@@ -10,6 +10,7 @@ import keras_tuner as kt
 from keras_tuner.engine.base_tuner import BaseTuner
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.model_selection import StratifiedKFold
 import tensorflow as tf
 
 from img_gen.img import image_diff
@@ -615,11 +616,9 @@ class GANTuner(BaseTuner):
         self,
         oracle,
         hypermodel,
-        use_cross_validation=False,
         **kwargs,
     ):
         super().__init__(oracle=oracle, hypermodel=hypermodel, **kwargs)
-        self.use_cross_validation = use_cross_validation
 
     # https://github.com/keras-team/keras-tuner/blob/b69f320c8cb4453d6f4d0eb00f3f71a78bda55c5/keras_tuner/engine/tuner.py#L247
     def on_epoch_end(self, trial, model, epoch, logs=None):
@@ -643,41 +642,10 @@ class GANTuner(BaseTuner):
 
         model = self.hypermodel.build(trial.hyperparameters, name=self.project_name)
 
-        if not self.use_cross_validation:
+        def on_epoch_end(epoch, loss):
+            self.on_epoch_end(trial, model, epoch, logs={"loss": loss})
 
-            def on_epoch_end(epoch, loss):
-                self.on_epoch_end(trial, model, epoch, logs={"loss": loss})
-
-            model.fit(x, y, on_epoch_end=on_epoch_end)
-            return
-
-        n_folds = 5
-        fold_size = math.floor(len(x) / n_folds)
-        val_losses = []
-
-        for i in range(n_folds):
-            x_train = []
-            x_test = x[i : (i + 1) * fold_size]
-            y_train = []
-            y_test = y[i : (i + 1) * fold_size]
-
-            if i == 0:
-                x_train = x[0:fold_size]
-                y_train = y[0:fold_size]
-
-            if i < n_folds - 1:
-                x_train = x_train + x[(i + 1) * fold_size : (i + 2) * fold_size]
-                y_train = y_train + y[(i + 1) * fold_size : (i + 2) * fold_size]
-
-            model.fit(x_train, y_train)
-
-            gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss = model.scores()
-
-            loss = (gen_g_loss + gen_f_loss + dis_x_loss + dis_y_loss) / 4
-            val_losses.append(loss)
-
-        self.update_trial(trial.trial_id, {"loss": loss})
-        self.save_model(trial.trial_id, model)
+        model.fit(x, y, on_epoch_end=on_epoch_end)
 
     def save_model(self, trial_id, model, step=0):
         model.save_current_models(self.get_trial_dir(trial_id))
@@ -696,7 +664,6 @@ def find_optimal_cycle_gan(
     checkpoints=True,
     directory="optimization_results",
     name="cycle_gan",
-    use_cross_validation=False,
     **params,
 ):
     tuner = GANTuner(
@@ -706,7 +673,6 @@ def find_optimal_cycle_gan(
         hypermodel=build_model,
         directory=directory,
         project_name=name,
-        use_cross_validation=use_cross_validation,
     )
 
     tuner.search(train_x, train_y)
