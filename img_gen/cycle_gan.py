@@ -217,21 +217,29 @@ class CycleGAN:
 
         if training:
             print("fake_x_buffer in calculate_losses", fake_x_buffer)
-            fake_x_buffer.append(fake_x)
-            if len(fake_x_buffer) > 50 / self.batch_size:
+            fake_x_buffer = (
+                tf.concat([fake_x_buffer, fake_x], 0)
+                if fake_x_buffer.shape[0] > 1
+                else fake_x
+            )
+
+            print(fake_x_buffer)
+            if fake_x_buffer.shape[0] > 50 / self.batch_size:
                 fake_x_buffer = fake_x_buffer[1:]
 
-            if len(fake_x_buffer) > 1:
-                fake_x = tf.concat(fake_x_buffer)
-
+            fake_x = fake_x_buffer
             print("all_fake_x", fake_x)
 
-            fake_y_buffer.append(fake_x)
-            if len(fake_y_buffer) > 50 / self.batch_size:
+            fake_y_buffer = (
+                tf.concat([fake_y_buffer, fake_y], 0)
+                if fake_y_buffer.shape[0] > 1
+                else fake_y
+            )
+
+            if fake_y_buffer.shape[0] > 50 / self.batch_size:
                 fake_y_buffer = fake_y_buffer[1:]
 
-            if len(fake_y_buffer) > 1:
-                fake_y = tf.concat(fake_y_buffer)
+            fake_y = fake_y_buffer
 
         # discriminate the real and generated results
         real_x_val = self.discriminator_x(real_x, training=True)
