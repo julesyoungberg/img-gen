@@ -483,8 +483,8 @@ class CycleGAN:
                 ) = self.train_step(
                     tf.reshape(real_x, shape),
                     tf.reshape(real_y, shape),
-                    tf.concat(fake_x_buffer, 0),
-                    tf.concat(fake_y_buffer, 0),
+                    fake_x_buffer,
+                    fake_y_buffer,
                 )
 
                 self.generator_g_epoch_losses.append(gen_g_loss)
