@@ -216,19 +216,16 @@ class CycleGAN:
         id_y = self.generator_g(real_y, training=True)
 
         if training:
-            print("fake_x_buffer in calculate_losses", fake_x_buffer)
             fake_x_buffer = (
                 tf.concat([fake_x_buffer, fake_x], 0)
                 if len(fake_x_buffer) > 1
                 else fake_x
             )
 
-            print(fake_x_buffer)
             if len(fake_x_buffer) > 50 / self.batch_size:
                 fake_x_buffer = fake_x_buffer[1:]
 
             fake_x = fake_x_buffer
-            print("all_fake_x", fake_x)
 
             fake_y_buffer = (
                 tf.concat([fake_y_buffer, fake_y], 0)
@@ -500,7 +497,6 @@ class CycleGAN:
 
             # run the train_step algorithm for each image
             for k, (real_x, real_y) in data:
-                print("fake_x_buffer:", fake_x_buffer)
                 (
                     gen_g_loss,
                     gen_f_loss,
