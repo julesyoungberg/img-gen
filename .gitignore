@@ -13,3 +13,4 @@ optimization_results
 models
 checkpoints
 openimages
+temp.*

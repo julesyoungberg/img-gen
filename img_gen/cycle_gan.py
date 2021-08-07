@@ -23,7 +23,7 @@ from img_gen.models import (
     unet_generator,
     optimizer,
 )
-from img_gen.storage import save_figure
+from img_gen.storage import bucket, save_figure
 
 
 class CycleGAN:
@@ -370,18 +370,19 @@ class CycleGAN:
                 filename += "_" + str(epoch)
             filename += ".png"
 
-            path = "./images/" + filename
             if self.use_cloud:
-                path = f"{self.name}/images/{filename}"
                 plt.savefig("temp.png", dpi=300, bbox_inches="tight")
             else:
+                path = "./images/" + filename
                 plt.savefig(path)
 
         if self.show_images:
             plt.show()
 
         if self.save_images and self.use_cloud:
+            path = f"{self.name}/images/{filename}"
             save_figure(path)
+            os.remove("temp.png")
 
         if not self.show_images:
             plt.ion()
@@ -689,6 +690,7 @@ def find_optimal_cycle_gan(
     checkpoints=True,
     directory="optimization_results",
     name="cycle_gan",
+    use_cloud=False,
     **params,
 ):
     tuner = GANTuner(
@@ -703,17 +705,30 @@ def find_optimal_cycle_gan(
     tuner.search(train_x, train_y)
 
     best_params = tuner.get_best_hyperparameters()[0]
+    params = {}
     print("optimal hyper parameters:")
     for param in PARAMETERS:
+        params[param] = best_params.get(param)
         print(f"    - {param}: {best_params.get(param)}")
 
-    # build and train optimal model
+    print("saving params")
+    if use_cloud:
+        blob = bucket.blob(f"{name}/params.json")
+        blob.upload_from_string(
+            data=json.dumps(params), content_type="application/json"
+        )
+    else:
+        with open(f"{name}/params.json", "w") as f:
+            json.dump(params, f)
+
+    print("training optimal model")
     cycle_gan = build_model(
         best_params,
         show_images=False,
         save_images=True,
         save_models=True,
         name=name,
+        use_cloud=use_cloud,
         **params,
     )
 
