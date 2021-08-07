@@ -228,12 +228,11 @@ class CycleGAN:
             if len(self.fake_y_buffer) > self.buffer_size:
                 self.fake_y_buffer = self.fake_y_buffer[1:]
 
-            all_fake_x = tf.convert_to_tensor(self.fake_x_buffer)
-            all_fake_y = tf.convert_to_tensor(self.fake_y_buffer)
+            fake_x_tensors = [tf.convert_to_tensor(f) for f in self.fake_x_buffer]
+            fake_y_tensors = [tf.convert_to_tensor(f) for f in self.fake_y_buffer]
 
-            shape = (-1, self.height, self.width, self.num_channels)
-            all_fake_x = tf.reshape(all_fake_x, shape)
-            all_fake_y = tf.reshape(all_fake_y, shape)
+            all_fake_x = tf.concat(fake_x_tensors, 0)
+            all_fake_y = tf.concat(fake_y_tensors, 0)
 
         # discriminate the real and generated results
         real_x_val = self.discriminator_x(real_x, training=True)
