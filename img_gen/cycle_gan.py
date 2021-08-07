@@ -215,8 +215,10 @@ class CycleGAN:
         id_x = self.generator_f(real_x, training=True)
         id_y = self.generator_g(real_y, training=True)
 
+        print("fake_x_buffer in calculate_losses", fake_x_buffer)
         all_fake_x = tf.concat([fake_x_buffer, fake_x], 0)
         all_fake_y = tf.concat([fake_y_buffer, fake_y], 0)
+        print("all_fake_x", all_fake_x)
 
         # discriminate the real and generated results
         real_x_val = self.discriminator_x(real_x, training=True)
@@ -470,6 +472,7 @@ class CycleGAN:
 
             # run the train_step algorithm for each image
             for k, (real_x, real_y) in data:
+                print("fake_x_buffer:", fake_x_buffer)
                 (
                     gen_g_loss,
                     gen_f_loss,
