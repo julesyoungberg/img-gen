@@ -115,8 +115,6 @@ class CycleGAN:
         self.generator_f_epoch_losses = []
         self.discriminator_y_epoch_losses = []
         self.discriminator_x_epoch_losses = []
-        self.fake_x_buffer = []
-        self.fake_y_buffer = []
         self.buffer_size = 50 / self.batch_size
 
         if self.gen_type == "resnet":
@@ -202,7 +200,7 @@ class CycleGAN:
         return ckpt_manager
 
     @tf.function
-    def calculate_losses(self, real_x, real_y, training=False):
+    def calculate_losses_with_results(self, real_x, real_y, fake_x_buffer, fake_y_buffer, training=False):
         # 1. get the predictions
         # generator G translates X -> Y
         # generator F translates Y -> X
@@ -215,21 +213,8 @@ class CycleGAN:
         id_x = self.generator_f(real_x, training=True)
         id_y = self.generator_g(real_y, training=True)
 
-        all_fake_x = fake_x
-        all_fake_y = fake_y
-
-        if training:
-            self.fake_x_buffer.append(fake_x)
-            self.fake_y_buffer.append(fake_y)
-
-            if len(self.fake_x_buffer) > self.buffer_size:
-                self.fake_x_buffer = self.fake_x_buffer[1:]
-
-            if len(self.fake_y_buffer) > self.buffer_size:
-                self.fake_y_buffer = self.fake_y_buffer[1:]
-
-            all_fake_x = tf.concat(self.fake_x_buffer, 0)
-            all_fake_y = tf.concat(self.fake_y_buffer, 0)
+        all_fake_x = tf.concat([fake_x_buffer, fake_x], 0)
+        all_fake_y = tf.concat([fake_y_buffer, fake_y], 0)
 
         # discriminate the real and generated results
         real_x_val = self.discriminator_x(real_x, training=True)
@@ -264,17 +249,21 @@ class CycleGAN:
             * self.dis_loss_weight
         )
 
-        return gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss
+        return gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss, fake_x, fake_y
 
     @tf.function
-    def train_step(self, real_x, real_y):
+    def calculate_losses(self, real_x, real_y, fake_x_buffer=[], fake_y_buffer=[], training=False)
+        (gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss, fake_x, fake_y) = self.calculate_losses_with_results(real_x, real_y, fake_x_buffer, fake_y_buffer, training)
+
+    @tf.function
+    def train_step(self, real_x, real_y, fake_x_buffer=[], fake_y_buffer=[]):
         """
         Executes a single training step.
         Generates images, computes losses, computes gradients, updates models.
         """
         with tf.GradientTape(persistent=True) as tape:
-            gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss = self.calculate_losses(
-                real_x, real_y, training=True
+            gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss, fake_x, fake_y = self.calculate_losses_with_results(
+                real_x, real_y, fake_x_buffer, fake_y_buffer, training=True
             )
 
         # 3. calculate gradients for generator and discriminator
@@ -302,7 +291,7 @@ class CycleGAN:
         )
 
         # 5. save current losses
-        return gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss
+        return gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss, fake_x, fake_y
 
     def aggregate_losses(self):
         self.generator_g_losses.append(aggregate_losses(self.generator_g_epoch_losses))
@@ -454,18 +443,29 @@ class CycleGAN:
             data = zipped.batch(self.batch_size) if self.batch_size > 1 else zipped
             data = enumerate(data)
 
+            fake_x_buffer = []
+            fake_y_buffer = []
+
             print(f"epoch: {epoch} ", end="")
 
             # run the train_step algorithm for each image
             for k, (real_x, real_y) in data:
-                gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss = self.train_step(
-                    tf.reshape(real_x, shape), tf.reshape(real_y, shape)
+                gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss, fake_x, fake_y = self.train_step(
+                    tf.reshape(real_x, shape), tf.reshape(real_y, shape), tf.concat(fake_x_buffer, 0), tf.concat(fake_y_buffer, 0)
                 )
 
                 self.generator_g_epoch_losses.append(gen_g_loss)
                 self.generator_f_epoch_losses.append(gen_f_loss)
                 self.discriminator_x_epoch_losses.append(dis_x_loss)
                 self.discriminator_y_epoch_losses.append(dis_y_loss)
+
+                fake_x_buffer.append(fake_x)
+                if len(fake_x_buffer) > (50 - self.batch_size) / self.batch_size:
+                    fake_x_buffer = fake_x_buffer[1:]
+
+                fake_y_buffer.append(fake_y)
+                if len(fake_y_buffer) > (50 - self.batch_size) / self.batch_size:
+                    fake_y_buffer = fake_y_buffer[1:]
 
                 # visual feedback
                 percent_done = int(k / num_samples * 100)
