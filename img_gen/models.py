@@ -345,19 +345,56 @@ def discriminator(
     return Model(inpt, d)
 
 
-def discriminator_loss_cross_entropy(real, generated):
-    real_loss = loss(tf.zeros_like(real), real)
-    gen_loss = loss(tf.ones_like(generated), generated)
+def discriminator_loss_cross_entropy(
+    real, generated, flip_labels=False, soft_labels=False
+):
+    if flip_labels:
+        real_labels = tf.zeros_like(real)
+        gen_labels = tf.ones_like(generated)
+
+        if soft_labels:
+            real_labels = real_labels + tf.random.uniform(shape=[real.shape[0]]) * 0.1
+            gen_labels = gen_labels - tf.random.unifom(shape=[generated.shape[0]]) * 0.1
+    else:
+        real_labels = tf.ones_like(real)
+        gen_labels = tf.zeros_like(generated)
+
+        if soft_labels:
+            real_labels = real_labels - tf.random.uniform(shape=[real.shape[0]]) * 0.1
+            gen_labels = (
+                gen_labels + tf.random.uniform(shape=[generated.shape[0]]) * 0.1
+            )
+
+    real_loss = loss(real_labels, real)
+    gen_loss = loss(gen_labels, generated)
+
     return real_loss + gen_loss
 
 
-def discriminator_loss_least_squares(real, generated):
+def discriminator_loss_least_squares(
+    real, generated, flip_labels=False, soft_labels=False
+):
+    if flip_labels:
+        generated = generated - 1
+
+        if soft_labels:
+            real = real - tf.random.uniform(shape=[real.shape[0]]) * 0.1
+            generated = generated + tf.random.uniform(shape=[generated.shape[0]]) * 0.1
+    else:
+        real = real - 1
+
+        if soft_labels:
+            real = real + tf.random.uniform(shape=[real.shape[0]]) * 0.1
+            generated = generated - tf.random.uniform(shape=[generated.shape[0]]) * 0.1
+
     return tf.math.reduce_mean(tf.math.square(real)) + tf.math.reduce_mean(
-        tf.math.square(generated - 1)
+        tf.math.square(generated)
     )
 
 
-def discriminator_loss(real, generated, loss_type="least_squares"):
+def discriminator_loss(
+    real, generated, loss_type="least_squares", flip_labels=False, soft_labels=False
+):
     """
     Quantifies how well the disciminator is able to distinguish real
     images from fakes. It compares the disriminator's predictions on
@@ -365,23 +402,29 @@ def discriminator_loss(real, generated, loss_type="least_squares"):
     images to an array of 0s.
     """
     if loss_type == "cross_entropy":
-        return discriminator_loss_cross_entropy(real, generated)
+        return discriminator_loss_cross_entropy(
+            real, generated, flip_labels=flip_labels, soft_labels=soft_labels
+        )
 
     if loss_type == "least_squares":
-        return discriminator_loss_least_squares(real, generated)
+        return discriminator_loss_least_squares(
+            real, generated, flip_labels=flip_labels, soft_labels=soft_labels
+        )
 
     return None
 
 
-def generator_loss_cross_entropy(validity):
-    return loss(tf.zeros_like(validity), validity)
+def generator_loss_cross_entropy(validity, flip_labels=False):
+    labels = tf.zeros_like(validity) if flip_labels else tf.ones_like(validity)
+    return loss(labels, validity)
 
 
-def generator_loss_least_squares(validity):
-    return tf.math.reduce_mean(tf.math.square(validity))
+def generator_loss_least_squares(validity, flip_labels=False):
+    x = validity if flip_labels else validity - 1
+    return tf.math.reduce_mean(tf.math.square(x))
 
 
-def generator_loss(validity, loss_type="least_squares"):
+def generator_loss(validity, loss_type="least_squares", flip_labels=False):
     """
     Quantifies how well the the generator was able to trick the
     discriminator. This can be measured by comparing the
@@ -389,10 +432,10 @@ def generator_loss(validity, loss_type="least_squares"):
     and array of 1s.
     """
     if loss_type == "cross_entropy":
-        return generator_loss_cross_entropy(validity)
+        return generator_loss_cross_entropy(validity, flip_labels=flip_lables)
 
     if loss_type == "least_squares":
-        return generator_loss_least_squares(validity)
+        return generator_loss_least_squares(validity, flip_labels=flip_labels)
 
     return None
 

@@ -54,6 +54,8 @@ class CycleGAN:
         save_models=False,
         batch_size=1,
         shuffle=True,
+        flip_labels=False,
+        soft_labels=False,
     ):
         self.num_channels = num_channels
         self.width = width
@@ -77,6 +79,8 @@ class CycleGAN:
         self.setup()
         self.name = name
         self.shuffle = shuffle
+        self.flip_labels = flip_labels
+        self.soft_labels = soft_labels
 
     def setup(self):
         self.name = (
@@ -245,8 +249,12 @@ class CycleGAN:
         fake_y_val = self.discriminator_y(fake_y, training=True)
 
         # 2. Calculate loss
-        gen_g_adv_loss = generator_loss(fake_y_val, loss_type=self.loss_type)
-        gen_f_adv_loss = generator_loss(fake_x_val, loss_type=self.loss_type)
+        gen_g_adv_loss = generator_loss(
+            fake_y_val, loss_type=self.loss_type, flip_labels=self.flip_labels
+        )
+        gen_f_adv_loss = generator_loss(
+            fake_x_val, loss_type=self.loss_type, flip_labels=self.flip_labels
+        )
 
         x_cycle_loss = image_diff(real_x, cycled_x)
         y_cycle_loss = image_diff(real_y, cycled_y)
@@ -263,11 +271,23 @@ class CycleGAN:
 
         # discriminator losses
         dis_x_loss = (
-            discriminator_loss(real_x_val, fake_x_val, loss_type=self.loss_type)
+            discriminator_loss(
+                real_x_val,
+                fake_x_val,
+                loss_type=self.loss_type,
+                flip_lables=self.flip_labels,
+                soft_labels=self.soft_labels,
+            )
             * self.dis_loss_weight
         )
         dis_y_loss = (
-            discriminator_loss(real_y_val, fake_y_val, loss_type=self.loss_type)
+            discriminator_loss(
+                real_y_val,
+                fake_y_val,
+                loss_type=self.loss_type,
+                flip_lables=self.flip_labels,
+                soft_labels=self.soft_labels,
+            )
             * self.dis_loss_weight
         )
 
@@ -649,6 +669,8 @@ PARAMETERS = [
     # "dis_alpha",
     "batch_size",
     # "shuffle",
+    "flip_labels",
+    "soft_labels",
 ]
 
 
@@ -665,6 +687,8 @@ def build_model(hp, show_images=True, **params):
     # dis_alpha = hp.Float("dis_alpha", 0.1, 0.7, default=0.2)
     batch_size = hp.Choice("batch_size", [1, 2], default=1)
     # shuffle = hp.Choice("shuffle", [True, False], default=True)
+    flip_labels = hp.Choice("flip_labels", [False, True])
+    soft_labels = hp.Choice("soft_labels", [False, True])
 
     cycle_gan = CycleGAN(
         # norm_type=norm_type,
@@ -678,6 +702,8 @@ def build_model(hp, show_images=True, **params):
         # dis_alpha=dis_alpha,
         batch_size=batch_size,
         # shuffle=shuffle,
+        flip_labels=flip_labels,
+        soft_labels=soft_labels,
         show_images=show_images,
         **params,
     )
