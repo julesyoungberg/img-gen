@@ -228,11 +228,8 @@ class CycleGAN:
             if len(self.fake_y_buffer) > self.buffer_size:
                 self.fake_y_buffer = self.fake_y_buffer[1:]
 
-            fake_x_tensors = [tf.convert_to_tensor(f) for f in self.fake_x_buffer]
-            fake_y_tensors = [tf.convert_to_tensor(f) for f in self.fake_y_buffer]
-
-            all_fake_x = tf.concat(fake_x_tensors, 0)
-            all_fake_y = tf.concat(fake_y_tensors, 0)
+            all_fake_x = tf.concat(self.fake_x_buffer, 0)
+            all_fake_y = tf.concat(self.fake_y_buffer, 0)
 
         # discriminate the real and generated results
         real_x_val = self.discriminator_x(real_x, training=True)
@@ -685,7 +682,7 @@ def find_optimal_cycle_gan(
     train_y,
     test_x,
     test_y,
-    epochs=40,
+    epochs=50,
     checkpoints=True,
     directory="optimization_results",
     name="cycle_gan",
