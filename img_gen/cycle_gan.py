@@ -275,7 +275,7 @@ class CycleGAN:
                 real_x_val,
                 fake_x_val,
                 loss_type=self.loss_type,
-                flip_lables=self.flip_labels,
+                flip_labels=self.flip_labels,
                 soft_labels=self.soft_labels,
             )
             * self.dis_loss_weight
@@ -285,7 +285,7 @@ class CycleGAN:
                 real_y_val,
                 fake_y_val,
                 loss_type=self.loss_type,
-                flip_lables=self.flip_labels,
+                flip_labels=self.flip_labels,
                 soft_labels=self.soft_labels,
             )
             * self.dis_loss_weight
