@@ -104,9 +104,13 @@ class CycleGAN:
 
         # losses
         self.generator_g_losses = []
+        self.generator_g_val_losses = []
         self.generator_f_losses = []
+        self.generator_f_val_losses = []
         self.discriminator_y_losses = []
+        self.discriminator_y_val_losses = []
         self.discriminator_x_losses = []
+        self.discriminator_x_val_losses = []
         self.generator_g_epoch_losses = []
         self.generator_f_epoch_losses = []
         self.discriminator_y_epoch_losses = []
@@ -401,6 +405,16 @@ class CycleGAN:
         self.discriminator_x.load_weights(os.path.join(save_dir, "discriminator_x"))
         self.discriminator_y.load_weights(os.path.join(save_dir, "discriminator_y"))
 
+    def scores(self, test_x, test_y):
+        shape = (-1, self.height, self.width, self.num_channels)
+        return self.calculate_losses(
+            tf.reshape(test_x, shape), tf.reshape(test_y, shape)
+        )
+
+    def score(self, test_x, test_y):
+        (gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss) = self.scores(test_x, test_y)
+        return np.array([gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss]).mean()
+
     def train(
         self,
         train_x,
@@ -470,6 +484,16 @@ class CycleGAN:
             self.generate_images(train_x, train_y, typ="train", epoch=epoch)
 
             if test_x is not None and test_y is not None:
+                (
+                    gen_g_val_loss,
+                    gen_f_val_loss,
+                    dis_x_val_loss,
+                    dis_y_val_loss,
+                ) = self.scores(test_x, test_y)
+                gen_g_val_losses.append(gen_g_val_loss)
+                gen_f_val_losses.append(gen_f_val_loss)
+                dis_x_val_losses.append(dis_x_val_loss)
+                dis_y_val_losses.append(dis_y_val_loss)
                 self.generate_images(test_x, test_y, typ="test", epoch=epoch)
 
             # save checkpoint every 5 epochs
@@ -500,7 +524,7 @@ class CycleGAN:
             on_epoch_end=on_epoch_end,
         )
 
-    def plot_losses(self):
+    def plot_train_losses(self):
         fig = plt.figure(figsize=(12, 12))
 
         plt.plot(self.generator_g_losses, label="gen_g")
@@ -510,15 +534,15 @@ class CycleGAN:
 
         plt.xlabel("Epoch")
         plt.ylabel("Loss")
-        plt.title("CycleGAN Losses")
+        plt.title("CycleGAN Training Losses")
 
         plt.legend()
 
         if self.save_images:
-            path = "images/losses.png"
+            path = "images/training_losses.png"
 
             if self.use_cloud:
-                path = f"{self.name}/losses.png"
+                path = f"{self.name}/training_losses.png"
                 plt.savefig("temp.png", dpi=300, bbox_inches="tight")
             else:
                 plt.savefig(path)
@@ -528,39 +552,40 @@ class CycleGAN:
         if self.save_images and self.use_cloud:
             save_figure(path)
 
-    def scores(self, test_x, test_y):
-        shape = (1, self.height, self.width, self.num_channels)
+    def plot_val_losses(self):
+        if len(self.generator_g_val_losses) == 0:
+            return
 
-        gen_g_losses = np.array([])
-        gen_f_losses = np.array([])
-        dis_x_losses = np.array([])
-        dis_y_losses = np.array([])
+        fig = plt.figure(figsize=(12, 12))
 
-        # calculae losses for each image
-        for (raw_x, raw_y) in tf.data.Dataset.zip((test_x, test_y)):
-            real_x = tf.reshape(raw_x, shape)
-            real_y = tf.reshape(raw_y, shape)
+        plt.plot(self.generator_g_val_losses, label="gen_g")
+        plt.plot(self.generator_f_val_losses, label="gen_f")
+        plt.plot(self.discriminator_x_val_losses, label="dis_x")
+        plt.plot(self.discriminator_y_val_losses, label="dis_y")
 
-            gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss = self.calculate_losses(
-                real_x, real_y
-            )
+        plt.xlabel("Epoch")
+        plt.ylabel("Loss")
+        plt.title("CycleGAN Validation Losses")
 
-            # save the losses
-            gen_g_losses = np.append(gen_g_losses, gen_g_loss)
-            gen_f_losses = np.append(gen_f_losses, gen_f_loss)
-            dis_x_losses = np.append(dis_x_losses, dis_x_loss)
-            dis_y_losses = np.append(dis_y_losses, dis_y_loss)
+        plt.legend()
 
-        return (
-            gen_g_losses.mean(),
-            gen_f_losses.mean(),
-            dis_x_losses.mean(),
-            dis_y_losses.mean(),
-        )
+        if self.save_images:
+            path = "images/validation_losses.png"
 
-    def score(self, test_x, test_y):
-        (gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss) = self.scores(test_x, test_y)
-        return np.array([gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss]).mean()
+            if self.use_cloud:
+                path = f"{self.name}/validation_losses.png"
+                plt.savefig("temp.png", dpi=300, bbox_inches="tight")
+            else:
+                plt.savefig(path)
+
+        plt.show()
+
+        if self.save_images and self.use_cloud:
+            save_figure(path)
+
+    def plot_losses(self):
+        self.plot_train_losses()
+        self.plot_val_losses()
 
 
 PARAMETERS = [
