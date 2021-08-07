@@ -200,7 +200,9 @@ class CycleGAN:
         return ckpt_manager
 
     @tf.function
-    def calculate_losses_with_results(self, real_x, real_y, fake_x_buffer, fake_y_buffer, training=False):
+    def calculate_losses_with_results(
+        self, real_x, real_y, fake_x_buffer, fake_y_buffer, training=False
+    ):
         # 1. get the predictions
         # generator G translates X -> Y
         # generator F translates Y -> X
@@ -252,8 +254,19 @@ class CycleGAN:
         return gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss, fake_x, fake_y
 
     @tf.function
-    def calculate_losses(self, real_x, real_y, fake_x_buffer=[], fake_y_buffer=[], training=False)
-        (gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss, fake_x, fake_y) = self.calculate_losses_with_results(real_x, real_y, fake_x_buffer, fake_y_buffer, training)
+    def calculate_losses(
+        self, real_x, real_y, fake_x_buffer=[], fake_y_buffer=[], training=False
+    ):
+        (
+            gen_g_loss,
+            gen_f_loss,
+            dis_x_loss,
+            dis_y_loss,
+            fake_x,
+            fake_y,
+        ) = self.calculate_losses_with_results(
+            real_x, real_y, fake_x_buffer, fake_y_buffer, training
+        )
 
     @tf.function
     def train_step(self, real_x, real_y, fake_x_buffer=[], fake_y_buffer=[]):
@@ -262,7 +275,14 @@ class CycleGAN:
         Generates images, computes losses, computes gradients, updates models.
         """
         with tf.GradientTape(persistent=True) as tape:
-            gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss, fake_x, fake_y = self.calculate_losses_with_results(
+            (
+                gen_g_loss,
+                gen_f_loss,
+                dis_x_loss,
+                dis_y_loss,
+                fake_x,
+                fake_y,
+            ) = self.calculate_losses_with_results(
                 real_x, real_y, fake_x_buffer, fake_y_buffer, training=True
             )
 
@@ -450,8 +470,18 @@ class CycleGAN:
 
             # run the train_step algorithm for each image
             for k, (real_x, real_y) in data:
-                gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss, fake_x, fake_y = self.train_step(
-                    tf.reshape(real_x, shape), tf.reshape(real_y, shape), tf.concat(fake_x_buffer, 0), tf.concat(fake_y_buffer, 0)
+                (
+                    gen_g_loss,
+                    gen_f_loss,
+                    dis_x_loss,
+                    dis_y_loss,
+                    fake_x,
+                    fake_y,
+                ) = self.train_step(
+                    tf.reshape(real_x, shape),
+                    tf.reshape(real_y, shape),
+                    tf.concat(fake_x_buffer, 0),
+                    tf.concat(fake_y_buffer, 0),
                 )
 
                 self.generator_g_epoch_losses.append(gen_g_loss)
