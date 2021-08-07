@@ -203,7 +203,7 @@ class CycleGAN:
 
         return ckpt_manager
 
-    @tf.function
+    @tf.function(experimental_relax_shapes=True)
     def calculate_losses_with_results(
         self, real_x, real_y, fake_x_buffer=[], fake_y_buffer=[], training=False
     ):
@@ -300,7 +300,6 @@ class CycleGAN:
             fake_y_buffer,
         )
 
-    @tf.function
     def calculate_losses(
         self, real_x, real_y, fake_x_buffer=[], fake_y_buffer=[], training=False
     ):
@@ -315,7 +314,7 @@ class CycleGAN:
             real_x, real_y, fake_x_buffer, fake_y_buffer, training
         )
 
-    @tf.function
+    @tf.function(experimental_relax_shapes=True)
     def train_step(self, real_x, real_y, fake_x_buffer=[], fake_y_buffer=[]):
         """
         Executes a single training step.
