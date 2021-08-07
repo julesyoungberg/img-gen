@@ -346,14 +346,14 @@ def discriminator(
 
 
 def discriminator_loss_cross_entropy(real, generated):
-    real_loss = loss(tf.ones_like(real), real)
-    gen_loss = loss(tf.zeros_like(generated), generated)
+    real_loss = loss(tf.zeros_like(real), real)
+    gen_loss = loss(tf.ones_like(generated), generated)
     return real_loss + gen_loss
 
 
 def discriminator_loss_least_squares(real, generated):
-    return tf.math.reduce_mean(tf.math.square(real - 1)) + tf.math.reduce_mean(
-        tf.math.square(generated)
+    return tf.math.reduce_mean(tf.math.square(real)) + tf.math.reduce_mean(
+        tf.math.square(generated - 1)
     )
 
 
@@ -374,11 +374,11 @@ def discriminator_loss(real, generated, loss_type="least_squares"):
 
 
 def generator_loss_cross_entropy(validity):
-    return loss(tf.ones_like(validity), validity)
+    return loss(tf.zeros_like(validity), validity)
 
 
 def generator_loss_least_squares(validity):
-    return tf.math.reduce_mean(tf.math.square(validity - 1))
+    return tf.math.reduce_mean(tf.math.square(validity))
 
 
 def generator_loss(validity, loss_type="least_squares"):

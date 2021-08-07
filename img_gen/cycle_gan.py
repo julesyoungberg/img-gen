@@ -490,8 +490,8 @@ class CycleGAN:
             data = zipped.batch(self.batch_size) if self.batch_size > 1 else zipped
             data = enumerate(data)
 
-            fake_x_buffer = []
-            fake_y_buffer = []
+            fake_x_buffer = tf.convert_to_tensor([])
+            fake_y_buffer = tf.convert_to_tensor([])
 
             print(f"epoch: {epoch} ", end="")
 
