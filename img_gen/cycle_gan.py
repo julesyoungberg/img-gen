@@ -201,7 +201,7 @@ class CycleGAN:
 
     @tf.function
     def calculate_losses_with_results(
-        self, real_x, real_y, fake_x_buffer, fake_y_buffer, training=False
+        self, real_x, real_y, fake_x_buffer=[], fake_y_buffer=[], training=False
     ):
         # 1. get the predictions
         # generator G translates X -> Y
@@ -215,16 +215,29 @@ class CycleGAN:
         id_x = self.generator_f(real_x, training=True)
         id_y = self.generator_g(real_y, training=True)
 
-        print("fake_x_buffer in calculate_losses", fake_x_buffer)
-        all_fake_x = tf.concat([fake_x_buffer, fake_x], 0)
-        all_fake_y = tf.concat([fake_y_buffer, fake_y], 0)
-        print("all_fake_x", all_fake_x)
+        if training:
+            print("fake_x_buffer in calculate_losses", fake_x_buffer)
+            fake_x_buffer.append(fake_x)
+            if len(fake_x_buffer) > 50 / self.batch_size:
+                fake_x_buffer = fake_x_buffer[1:]
+
+            if len(fake_x_buffer) > 1:
+                fake_x = tf.concat(fake_x_buffer)
+
+            print("all_fake_x", fake_x)
+
+            fake_y_buffer.append(fake_x)
+            if len(fake_y_buffer) > 50 / self.batch_size:
+                fake_y_buffer = fake_y_buffer[1:]
+
+            if len(fake_y_buffer) > 1:
+                fake_y = tf.concat(fake_y_buffer)
 
         # discriminate the real and generated results
         real_x_val = self.discriminator_x(real_x, training=True)
         real_y_val = self.discriminator_y(real_y, training=True)
-        fake_x_val = self.discriminator_x(all_fake_x, training=True)
-        fake_y_val = self.discriminator_y(all_fake_y, training=True)
+        fake_x_val = self.discriminator_x(fake_x, training=True)
+        fake_y_val = self.discriminator_y(fake_y, training=True)
 
         # 2. Calculate loss
         gen_g_adv_loss = generator_loss(fake_y_val, loss_type=self.loss_type)
@@ -253,7 +266,14 @@ class CycleGAN:
             * self.dis_loss_weight
         )
 
-        return gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss, fake_x, fake_y
+        return (
+            gen_g_loss,
+            gen_f_loss,
+            dis_x_loss,
+            dis_y_loss,
+            fake_x_buffer,
+            fake_y_buffer,
+        )
 
     @tf.function
     def calculate_losses(
@@ -492,13 +512,8 @@ class CycleGAN:
                 self.discriminator_x_epoch_losses.append(dis_x_loss)
                 self.discriminator_y_epoch_losses.append(dis_y_loss)
 
-                fake_x_buffer.append(fake_x)
-                if len(fake_x_buffer) > (50 - self.batch_size) / self.batch_size:
-                    fake_x_buffer = fake_x_buffer[1:]
-
-                fake_y_buffer.append(fake_y)
-                if len(fake_y_buffer) > (50 - self.batch_size) / self.batch_size:
-                    fake_y_buffer = fake_y_buffer[1:]
+                fake_x_buffer = fake_x
+                fake_y_buffer = fake_y
 
                 # visual feedback
                 percent_done = int(k / num_samples * 100)
