@@ -219,12 +219,12 @@ class CycleGAN:
             print("fake_x_buffer in calculate_losses", fake_x_buffer)
             fake_x_buffer = (
                 tf.concat([fake_x_buffer, fake_x], 0)
-                if fake_x_buffer.shape[0] > 1
+                if len(fake_x_buffer) > 1
                 else fake_x
             )
 
             print(fake_x_buffer)
-            if fake_x_buffer.shape[0] > 50 / self.batch_size:
+            if len(fake_x_buffer) > 50 / self.batch_size:
                 fake_x_buffer = fake_x_buffer[1:]
 
             fake_x = fake_x_buffer
@@ -232,11 +232,11 @@ class CycleGAN:
 
             fake_y_buffer = (
                 tf.concat([fake_y_buffer, fake_y], 0)
-                if fake_y_buffer.shape[0] > 1
+                if len(fake_y_buffer) > 1
                 else fake_y
             )
 
-            if fake_y_buffer.shape[0] > 50 / self.batch_size:
+            if len(fake_y_buffer) > 50 / self.batch_size:
                 fake_y_buffer = fake_y_buffer[1:]
 
             fake_y = fake_y_buffer
