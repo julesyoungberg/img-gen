@@ -666,7 +666,7 @@ PARAMETERS = [
     # "lmbd",
     "learning_rate",
     # "dis_alpha",
-    "batch_size",
+    # "batch_size",
     # "shuffle",
     "flip_labels",
     "soft_labels",
@@ -684,7 +684,7 @@ def build_model(hp, show_images=True, **params):
     # lmbd = hp.Int("lmbd", 1, 15, default=10)
     learning_rate = hp.Float("learning_rate", 1e-4, 1e-3, sampling="log", default=2e-4)
     # dis_alpha = hp.Float("dis_alpha", 0.1, 0.7, default=0.2)
-    batch_size = hp.Choice("batch_size", [1, 2], default=1)
+    # batch_size = hp.Choice("batch_size", [1, 2], default=1)
     # shuffle = hp.Choice("shuffle", [True, False], default=True)
     flip_labels = hp.Choice("flip_labels", [False, True])
     soft_labels = hp.Choice("soft_labels", [False, True])
@@ -699,7 +699,7 @@ def build_model(hp, show_images=True, **params):
         # lmbd=lmbd,
         learning_rate=learning_rate,
         # dis_alpha=dis_alpha,
-        batch_size=batch_size,
+        # batch_size=batch_size,
         # shuffle=shuffle,
         flip_labels=flip_labels,
         soft_labels=soft_labels,
