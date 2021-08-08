@@ -459,9 +459,33 @@ class CycleGAN:
         self.discriminator_y.load_weights(os.path.join(save_dir, "discriminator_y"))
 
     def scores(self, test_x, test_y):
-        shape = (-1, self.height, self.width, self.num_channels)
-        return self.calculate_losses(
-            tf.reshape(test_x, shape), tf.reshape(test_y, shape)
+        shape = (1, self.height, self.width, self.num_channels)
+
+        gen_g_losses = np.array([])
+        gen_f_losses = np.array([])
+        dis_x_losses = np.array([])
+        dis_y_losses = np.array([])
+
+        # calculae losses for each image
+        for (raw_x, raw_y) in tf.data.Dataset.zip((test_x, test_y)):
+            real_x = tf.reshape(raw_x, shape)
+            real_y = tf.reshape(raw_y, shape)
+
+            gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss = self.calculate_losses(
+                real_x, real_y
+            )
+
+            # save the losses
+            gen_g_losses = np.append(gen_g_losses, gen_g_loss)
+            gen_f_losses = np.append(gen_f_losses, gen_f_loss)
+            dis_x_losses = np.append(dis_x_losses, dis_x_loss)
+            dis_y_losses = np.append(dis_y_losses, dis_y_loss)
+
+        return (
+            gen_g_losses.mean(),
+            gen_f_losses.mean(),
+            dis_x_losses.mean(),
+            dis_y_losses.mean(),
         )
 
     def score(self, test_x, test_y):
