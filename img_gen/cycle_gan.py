@@ -119,7 +119,7 @@ class CycleGAN:
         self.generator_f_epoch_losses = []
         self.discriminator_y_epoch_losses = []
         self.discriminator_x_epoch_losses = []
-        self.buffer_size = 50 / self.batch_size
+        self.buffer_size = int(50 / self.batch_size)
 
         if self.gen_type == "resnet":
             # generator G maps from image set X to Y
@@ -226,7 +226,7 @@ class CycleGAN:
                 else fake_x
             )
 
-            if len(fake_x_buffer) > 50 / self.batch_size:
+            if len(fake_x_buffer) > self.buffer_size:
                 fake_x_buffer = fake_x_buffer[1:]
 
             fake_x = fake_x_buffer
@@ -237,7 +237,7 @@ class CycleGAN:
                 else fake_y
             )
 
-            if len(fake_y_buffer) > 50 / self.batch_size:
+            if len(fake_y_buffer) > self.buffer_size:
                 fake_y_buffer = fake_y_buffer[1:]
 
             fake_y = fake_y_buffer
