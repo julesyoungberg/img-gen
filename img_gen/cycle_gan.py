@@ -314,6 +314,7 @@ class CycleGAN:
         ) = self.calculate_losses_with_results(
             real_x, real_y, fake_x_buffer, fake_y_buffer, training
         )
+        return (gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss)
 
     @tf.function(experimental_relax_shapes=True)
     def train_step(self, real_x, real_y, fake_x_buffer=[], fake_y_buffer=[]):
