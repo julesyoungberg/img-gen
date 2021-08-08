@@ -674,7 +674,17 @@ PARAMETERS = [
 ]
 
 
-def build_model(hp, show_images=True, use_identity=False, **params):
+def build_model(
+    hp,
+    show_images=True,
+    use_identity=False,
+    gen_dropout=None,
+    dis_loss_weight=None,
+    learning_rate=None,
+    flip_labels=None,
+    soft_labels=None,
+    **params,
+):
     """Builds an optimizable cycle gan."""
     # norm_type = hp.Choice("norm_type", ["batchnorm", "instancenorm"])
     # gen_type = hp.Choice("gen_type", ["unet", "resnet"])
