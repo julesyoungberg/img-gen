@@ -585,10 +585,10 @@ class CycleGAN:
                     dis_x_val_loss,
                     dis_y_val_loss,
                 ) = self.scores(test_x, test_y)
-                gen_g_val_losses.append(gen_g_val_loss)
-                gen_f_val_losses.append(gen_f_val_loss)
-                dis_x_val_losses.append(dis_x_val_loss)
-                dis_y_val_losses.append(dis_y_val_loss)
+                self.generator_g_val_losses.append(gen_g_val_loss)
+                self.generator_f_val_losses.append(gen_f_val_loss)
+                self.discriminator_x_val_losses.append(dis_x_val_loss)
+                self.discriminator_y_val_losses.append(dis_y_val_loss)
                 self.generate_images(test_x, test_y, typ="test", epoch=epoch)
 
             # save checkpoint every 5 epochs
