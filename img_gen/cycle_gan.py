@@ -358,8 +358,9 @@ class CycleGAN:
             zip(dis_y_gradient, self.discriminator_y.trainable_variables)
         )
 
-        # 5. save current losses
-        return gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss, fake_x, fake_y
+        result = (gen_g_loss, gen_f_loss, dis_x_loss, dis_y_loss, fake_x, fake_y)
+        print(result)
+        return result
 
     def aggregate_losses(self):
         self.generator_g_losses.append(aggregate_losses(self.generator_g_epoch_losses))
