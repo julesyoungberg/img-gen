@@ -58,6 +58,7 @@ class CycleGAN:
         flip_labels=False,
         soft_labels=False,
     ):
+        tf.random.set_seed(1234)
         self.num_channels = num_channels
         self.width = width
         self.height = height
