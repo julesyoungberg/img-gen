@@ -804,6 +804,8 @@ def find_optimal_cycle_gan(
     directory="optimization_results",
     name="cycle_gan",
     use_cloud=False,
+    cloud_project="img-gen-319216",
+    cloud_bucket="img-gen-training",
     **params,
 ):
     tuner = GANTuner(
@@ -843,6 +845,8 @@ def find_optimal_cycle_gan(
         save_models=True,
         name=name,
         use_cloud=use_cloud,
+        cloud_project=cloud_project,
+        cloud_bucket=cloud_bucket,
         **params,
     )
 
