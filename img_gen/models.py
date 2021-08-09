@@ -129,7 +129,7 @@ def residual_block(inpt, filters=256, conv_size=(3, 3), norm_type="instancenorm"
         r = InstanceNormalization(axis=-1)(r)
 
     # layer 2
-    r = Conv2D(filters, conv_size, padding="same", kernel_initializer=initializer)(inpt)
+    r = Conv2D(filters, conv_size, padding="same", kernel_initializer=initializer)(r)
     if norm_type == "batchnorm":
         r = BatchNormalization()(r)
     elif norm_type == "instancenorm":

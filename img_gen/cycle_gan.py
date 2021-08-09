@@ -682,8 +682,8 @@ class CycleGAN:
 
 
 PARAMETERS = [
-    # "norm_type",
-    # "gen_type",
+    "norm_type",
+    "gen_type",
     "use_identity",
     "gen_dropout",
     # "gen_conv_size",
@@ -701,6 +701,8 @@ PARAMETERS = [
 def build_model(
     hp,
     show_images=True,
+    norm_type=None,
+    gen_type=None,
     use_identity=False,
     gen_dropout=None,
     dis_loss_weight=None,
@@ -710,8 +712,8 @@ def build_model(
     **params,
 ):
     """Builds an optimizable cycle gan."""
-    # norm_type = hp.Choice("norm_type", ["batchnorm", "instancenorm"])
-    # gen_type = hp.Choice("gen_type", ["unet", "resnet"])
+    norm_type = hp.Choice("norm_type", ["batchnorm", "instancenorm"])
+    gen_type = hp.Choice("gen_type", ["unet", "resnet"])
     use_identity = hp.Choice("use_identity", [False, True])
     gen_dropout = hp.Float("gen_dropout", 0.0, 0.3, default=0.0)
     # gen_conv_size = hp.Choice("gen_conv_size", [3, 4], default=3)
@@ -725,8 +727,8 @@ def build_model(
     soft_labels = hp.Choice("soft_labels", [False, True])
 
     cycle_gan = CycleGAN(
-        # norm_type=norm_type,
-        # gen_type=gen_type,
+        norm_type=norm_type,
+        gen_type=gen_type,
         use_identity=use_identity,
         gen_dropout=gen_dropout,
         # gen_conv_size=(gen_conv_size, gen_conv_size),
