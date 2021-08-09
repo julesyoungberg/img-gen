@@ -828,7 +828,7 @@ def find_optimal_cycle_gan(
 
     print("saving params")
     if use_cloud:
-        bucket = get_bucket(project=self.cloud_project, bucket=self.cloud_bucket)
+        bucket = get_bucket(project=cloud_project, bucket=cloud_bucket)
         blob = bucket.blob(f"{name}/params.json")
         blob.upload_from_string(
             data=json.dumps(params), content_type="application/json"
