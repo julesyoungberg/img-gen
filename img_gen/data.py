@@ -78,9 +78,9 @@ def load_cartoons():
     return preprocess_images(train, jitter=True), preprocess_images(test)
 
 
-def load_cycle_gan_dataset(dataset):
+def load_tensorflow_dataset(dataset):
     data, metadata = tfds.load(
-        "cycle_gan/" + dataset,
+        dataset,
         with_info=True,
         as_supervised=True,
     )
@@ -94,3 +94,11 @@ def load_cycle_gan_dataset(dataset):
         preprocess_images(test_x),
         preprocess_images(test_y),
     )
+
+
+def load_cycle_gan_dataset(dataset):
+    return load_tensorflow_dataset("cycle_gan/" + dataset)
+
+
+def load_lfw_dataset():
+    return load_tensorflow_dataset("lfw")
