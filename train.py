@@ -20,6 +20,7 @@ cyc_gan = find_optimal_cycle_gan(
     use_cloud=True,
     cloud_project=GCP_PROJECT,
     cloud_bucket=GCP_BUCKET,
+    name="vangogh2photo",
 )
 
 # print results
