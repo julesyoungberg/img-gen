@@ -1,5 +1,6 @@
 # import tensorflow_cloud as tfc
 
+GCP_PROJECT = "img-gen-319216"
 GCP_BUCKET = "img-gen-training"
 
 # tfc.run(
@@ -42,6 +43,7 @@ cyc_gan = find_optimal_cycle_gan(
     test_y,
     checkpoints=True,
     use_cloud=True,
+    cloud_project=GCP_PROJECT,
     cloud_bucket=GCP_BUCKET,
 )
 # cyc_gan = CycleGAN(gen_conv_size=3)

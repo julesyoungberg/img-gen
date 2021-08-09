@@ -48,6 +48,7 @@ class CycleGAN:
         dis_alpha=0.2,
         lmbd=10,
         use_cloud=False,
+        cloud_project="img-gen-319216",
         cloud_bucket="img-gen-training",
         name="",
         show_images=False,
@@ -73,6 +74,7 @@ class CycleGAN:
         self.dis_alpha = dis_alpha
         self.lmbd = lmbd
         self.use_cloud = use_cloud
+        self.cloud_project = cloud_project
         self.cloud_bucket = cloud_bucket
         self.show_images = show_images
         self.save_images = save_images
@@ -434,7 +436,7 @@ class CycleGAN:
 
         if self.save_images and self.use_cloud:
             path = f"{self.name}/images/{filename}"
-            save_figure(path)
+            save_figure(path, project=self.cloud_project, bucket=self.cloud_bucket)
             os.remove("temp.png")
 
         if not self.show_images:
@@ -644,7 +646,7 @@ class CycleGAN:
         plt.show()
 
         if self.save_images and self.use_cloud:
-            save_figure(path)
+            save_figure(path, project=self.cloud_project, bucket=self.cloud_bucket)
 
     def plot_val_losses(self):
         if len(self.generator_g_val_losses) == 0:
@@ -675,7 +677,7 @@ class CycleGAN:
         plt.show()
 
         if self.save_images and self.use_cloud:
-            save_figure(path)
+            save_figure(path, project=self.cloud_project, bucket=self.cloud_bucket)
 
     def plot_losses(self):
         self.plot_train_losses()
