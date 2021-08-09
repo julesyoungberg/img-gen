@@ -432,7 +432,7 @@ def generator_loss(validity, loss_type="least_squares", flip_labels=False):
     and array of 1s.
     """
     if loss_type == "cross_entropy":
-        return generator_loss_cross_entropy(validity, flip_labels=flip_lables)
+        return generator_loss_cross_entropy(validity, flip_labels=flip_labels)
 
     if loss_type == "least_squares":
         return generator_loss_least_squares(validity, flip_labels=flip_labels)

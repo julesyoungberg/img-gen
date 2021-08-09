@@ -16,4 +16,4 @@ def save_file(
 
 
 def save_figure(key, project="img-gen-319216", bucket="img-gen-training"):
-    save_file("temp.png", key, project=projcet, bucket=bucket)
+    save_file("temp.png", key, project=project, bucket=bucket)
