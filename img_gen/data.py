@@ -1,5 +1,5 @@
 import os, sys, tarfile
-import urllib.request
+import requests
 
 from openimages.download import download_images
 from tensorflow.keras.preprocessing import image_dataset_from_directory
@@ -44,22 +44,8 @@ def load_openimages(input_labels=[], output_labels=[]):
     )
 
 
-# https://gist.github.com/devhero/8ae2229d9ea1a59003ced4587c9cb236
-def download_tar(tar_url, extract_path="."):
-    ftpstream = urllib.request.urlopen(tar_url)
-    thetarfile = tarfile.open(fileobj=ftpstream, mode="r|gz")
-    thetarfile.extractall(path=extract_path)
-
-
 def load_cartoons_dataset():
     cartoons_dir = "./cartoons"
-
-    print("Downloading cartoons...")
-    download_tar(
-        "https://storage.cloud.google.com/cartoonset_public_files/cartoonset10k.tgz",
-        extract_path=cartoons_dir,
-    )
-
     options = {
         "validation_split": 0.2,
         "seed": 123,
