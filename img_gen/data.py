@@ -78,26 +78,29 @@ def load_cartoons_dataset():
     return preprocess_images(train, jitter=True), preprocess_images(test)
 
 
-def load_tensorflow_dataset(dataset):
+def load_tensorflow_dataset(dataset, with_y=False):
     data, metadata = tfds.load(
         dataset,
         with_info=True,
         as_supervised=True,
     )
 
-    train_x, train_y = data["trainA"], data["trainB"]
-    test_x, test_y = data["testA"], data["testB"]
+    train_x, test_x = data["trainA"], data["testA"]
+    train_x = preprocess_images(train_x, jitter=True)
+    test_x = preprocess_images(test_x)
 
-    return (
-        preprocess_images(train_x, jitter=True),
-        preprocess_images(train_y, jitter=True),
-        preprocess_images(test_x),
-        preprocess_images(test_y),
-    )
+    if not with_y:
+        return train_x, test_x
+
+    train_y, test_y = data["trainB"], data["testB"]
+    train_y = preprocess_images(train_y, jitter=True)
+    test_y = preprocess_images(test_y)
+
+    return (train_x, train_y, test_x, test_y)
 
 
 def load_cycle_gan_dataset(dataset):
-    return load_tensorflow_dataset("cycle_gan/" + dataset)
+    return load_tensorflow_dataset("cycle_gan/" + dataset, with_y=True)
 
 
 def load_lfw_dataset():
