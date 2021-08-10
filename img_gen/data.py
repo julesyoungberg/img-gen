@@ -51,7 +51,7 @@ def download_tar(tar_url, extract_path="."):
     thetarfile.extractall(path=extract_path)
 
 
-def load_cartoons():
+def load_cartoons_dataset():
     cartoons_dir = "./cartoons"
 
     print("Downloading cartoons...")
