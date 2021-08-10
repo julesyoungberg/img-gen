@@ -100,7 +100,10 @@ def load_lfw_dataset():
     train = tfds.load("lfw", split="train[:20%]")
     test = tfds.load("lfw", split="train[20%:]")
 
-    train = preprocess_images(train, jitter=True)
-    test = preprocess_images(test)
+    def f(x):
+        return x["image"]
+
+    train = preprocess_images(train.map(f), jitter=True)
+    test = preprocess_images(test.map(f))
 
     return train, test
