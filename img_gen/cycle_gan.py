@@ -687,12 +687,11 @@ class CycleGAN:
 PARAMETERS = [
     # "norm_type",
     # "gen_type",
-    "use_identity",
     "gen_dropout",
     # "gen_conv_size",
     "dis_loss_weight",
     # "lmbd",
-    "learning_rate",
+    # "learning_rate",
     # "dis_alpha",
     # "batch_size",
     # "shuffle",
@@ -706,10 +705,9 @@ def build_model(
     show_images=True,
     # norm_type=None,
     # gen_type=None,
-    use_identity=False,
     gen_dropout=None,
     dis_loss_weight=None,
-    learning_rate=None,
+    # learning_rate=None,
     flip_labels=None,
     soft_labels=None,
     **params,
@@ -717,12 +715,11 @@ def build_model(
     """Builds an optimizable cycle gan."""
     # norm_type = hp.Choice("norm_type", ["batchnorm", "instancenorm"])
     # gen_type = hp.Choice("gen_type", ["unet", "resnet"])
-    use_identity = hp.Choice("use_identity", [False, True])
     gen_dropout = hp.Float("gen_dropout", 0.0, 0.3, default=0.0)
     # gen_conv_size = hp.Choice("gen_conv_size", [3, 4], default=3)
     dis_loss_weight = hp.Float("dis_loss_weight", 0.5, 1.0, default=1.0)
     # lmbd = hp.Int("lmbd", 1, 15, default=10)
-    learning_rate = hp.Float("learning_rate", 1e-4, 1e-3, sampling="log", default=2e-4)
+    # learning_rate = hp.Float("learning_rate", 1e-4, 1e-3, sampling="log", default=2e-4)
     # dis_alpha = hp.Float("dis_alpha", 0.1, 0.7, default=0.2)
     # batch_size = hp.Choice("batch_size", [1, 2], default=1)
     # shuffle = hp.Choice("shuffle", [True, False], default=True)
@@ -732,12 +729,11 @@ def build_model(
     cycle_gan = CycleGAN(
         # norm_type=norm_type,
         # gen_type=gen_type,
-        use_identity=use_identity,
         gen_dropout=gen_dropout,
         # gen_conv_size=(gen_conv_size, gen_conv_size),
         dis_loss_weight=dis_loss_weight,
         # lmbd=lmbd,
-        learning_rate=learning_rate,
+        # learning_rate=learning_rate,
         # dis_alpha=dis_alpha,
         # batch_size=batch_size,
         # shuffle=shuffle,
@@ -806,11 +802,12 @@ def find_optimal_cycle_gan(
     use_cloud=False,
     cloud_project="img-gen-319216",
     cloud_bucket="img-gen-training",
+    max_trials=10,
     **params,
 ):
     tuner = GANTuner(
         oracle=kt.oracles.BayesianOptimization(
-            objective=kt.Objective("loss", "min"), max_trials=10
+            objective=kt.Objective("loss", "min"), max_trials=max_trials
         ),
         hypermodel=build_model,
         directory=directory,
