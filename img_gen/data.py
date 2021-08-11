@@ -52,7 +52,7 @@ def load_cartoons_dataset():
         "image_size": (256, 256),
         "labels": None,
         "label_mode": None,
-        "batch_size": None,
+        "batch_size": 1,
         "shuffle": False,
         "smart_resize": True,
     }
