@@ -2,7 +2,6 @@ google-auth==1.33.1
 google-cloud-storage==1.41.0
 google-cloud-logging==2.3.1 #DO NOT UPGRADE: google-cloud-error-reporting 1.1.2 requires google-cloud-logging<2.4,>=1.14.0
 google-cloud-error-reporting==1.2.0
-keras==2.4.3
 keras-tuner==1.0.3
 matplotlib==3.3.4
 numpy==1.19.2
@@ -11,4 +10,3 @@ scikit-learn==0.24.2
 tensorflow==2.5.0
 tensorflow-addons==0.13.0
 tensorflow-datasets==4.3.0
-Keras-Preprocessing==1.1.2
