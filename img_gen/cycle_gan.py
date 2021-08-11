@@ -751,9 +751,11 @@ class GANTuner(BaseTuner):
         self,
         oracle,
         hypermodel,
+        use_identity=False,
         **kwargs,
     ):
         super().__init__(oracle=oracle, hypermodel=hypermodel, **kwargs)
+        self.use_identity = False
 
     # https://github.com/keras-team/keras-tuner/blob/b69f320c8cb4453d6f4d0eb00f3f71a78bda55c5/keras_tuner/engine/tuner.py#L247
     def on_epoch_end(self, trial, model, epoch, logs=None):
@@ -775,7 +777,11 @@ class GANTuner(BaseTuner):
     def run_trial(self, trial, x, y):
         hp = trial.hyperparameters
 
-        model = self.hypermodel.build(trial.hyperparameters, name=self.project_name)
+        model = self.hypermodel.build(
+            trial.hyperparameters,
+            name=self.project_name,
+            use_identity=self.use_identity,
+        )
 
         def on_epoch_end(epoch, loss):
             self.on_epoch_end(trial, model, epoch, logs={"loss": loss})
@@ -803,6 +809,7 @@ def find_optimal_cycle_gan(
     cloud_project="img-gen-319216",
     cloud_bucket="img-gen-training",
     max_trials=10,
+    use_identity=False,
     **params,
 ):
     tuner = GANTuner(
@@ -812,6 +819,7 @@ def find_optimal_cycle_gan(
         hypermodel=build_model,
         directory=directory,
         project_name=name,
+        use_identity=use_identity,
     )
 
     tuner.search(train_x, train_y)
@@ -844,6 +852,7 @@ def find_optimal_cycle_gan(
         use_cloud=use_cloud,
         cloud_project=cloud_project,
         cloud_bucket=cloud_bucket,
+        use_identity=use_identity,
         **params,
     )
 
