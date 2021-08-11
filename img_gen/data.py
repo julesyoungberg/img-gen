@@ -61,7 +61,7 @@ def load_cartoons_dataset():
     print("batch_size ", options["batch_size"])
     train = image_dataset_from_directory(cartoons_dir, subset="training", **options)
     for x in train:
-        print(x)
+        print(x.shape)
         break
     test = image_dataset_from_directory(cartoons_dir, subset="validation", **options)
 
