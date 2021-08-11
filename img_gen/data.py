@@ -57,15 +57,14 @@ def load_cartoons_dataset():
         "smart_resize": True,
     }
 
-    print("Creating datasets...")
-    print("batch_size ", options["batch_size"])
+    print("Creating cartoon datasets...")
     train = image_dataset_from_directory(cartoons_dir, subset="training", **options)
-    for x in train:
-        print(x.shape)
-        break
     test = image_dataset_from_directory(cartoons_dir, subset="validation", **options)
 
-    return preprocess_images(train, jitter=True), preprocess_images(test)
+    def f(x):
+        return x[0]
+
+    return preprocess_images(train.map(f), jitter=True), preprocess_images(test.map(f))
 
 
 def load_cycle_gan_dataset(dataset):
